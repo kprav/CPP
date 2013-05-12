@@ -1,0 +1,5 @@
+This is a project done as a part of Computer Communications course at USC during Spring 2009.
+
+  - Emulated and analyzed the performance statistics of a multithreaded time driven M/M/2 system for a given probability density function of packet arrival and router service times.
+
+
