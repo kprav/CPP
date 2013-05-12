@@ -1,0 +1,4 @@
+This is a project done as a part of Computer Communications course at USC during Spring 2009.
+
+  - A client-server system using TCP sockets, for address resolution and file transfer with server handling multiple client requests concurrently.
+

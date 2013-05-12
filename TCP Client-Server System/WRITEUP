@@ -1,0 +1,51 @@
+I. Compiling and Executing
+--------------------------
+	1. make server ------ this command will compile the server
+	2. make client ------ this command will compile the client
+	3. ./server [-t seconds] [-d delay] [-m] port ------ execute server
+	4. ./client {adr|fsz|get} [-o offset] [-m] hostname:port string --- execute client
+
+
+II. ctrl+c on the Server
+-----------------------
+	When a ctrl+c is hit on the server while a transfer is happening, immediately the 
+	server exit. The client also exits and prints "Something went wrong"
+
+
+III. Server times out while transfer
+------------------------------------
+	If the server times out during a transfer, the server will exit. The client will also
+	exit. However, the client will print out all information pertaining to the data it
+	received so far from server before the server timed out.	
+
+
+IV. Client closes socket
+------------------------
+	The server handling the request of this particular client exits.
+
+
+V. Client times out before the server
+-------------------------------------
+	The server handling the request of this particular client exits.
+
+
+VI. Server sends partial data (either just the header or part of data) and closes socket
+----------------------------------------------------------------------------------------
+	The client exits and prints "Something went wrong"
+
+
+VII. MD5 checksum when the offset specified is equal to or more than the size of the file
+-----------------------------------------------------------------------------------------
+	Since the server sends no data, the client will print 32 0s
+
+
+VIII. Number of connections on listen()
+---------------------------------------
+	The server listens to a maximum of 50 conncetions
+
+
+IX. References
+---------------
+	1. Used a block of code from "Beej's Guide to Network Programming" - http://beej.us/guide/bgnet/
+	2. Used little code from project work done in the course CSCI402x - Operating Systems
+	3. Referred to code snippets done during one of my undergraduate classes and used them.
