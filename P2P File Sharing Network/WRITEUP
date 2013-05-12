@@ -1,0 +1,7 @@
+1. The time out for all the messages is equal to the MsgLifeTime.
+
+2. The iniparser used in this project was written by Nicolas Devillard - Copyright (c) 2000 by Nicolas Devillard.
+
+3. The *.peta* files found the files directory stores the password for a corresponding data file.
+
+4. When a get command is issued for blondie1.mp3, the command prompt sometimes returns before the file gets fully transferred. Please wait a few extra seconds for the file to fully get transferred.

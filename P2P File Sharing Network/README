@@ -1,0 +1,5 @@
+This is a project done as a part of Computer Communications course at USC during Fall 2009.
+
+  - Developed a multithreaded network with nodes joining and leaving network dynamically.
+  - Implemented routines to transfer, store, search and download files from the network.
+
