@@ -1,0 +1,564 @@
+   Title: Writeup for Project 2, Fall 2008
+
+   Date: 10/10/08
+
+   I. REQUIREMENTS:
+   ================
+ 
+	Part 1 : SYSTEM CALLS
+	---------------------
+
+	In this part of the assignment we are implementing several system calls and testing the functioning of the existing ones.
+
+	+  System Calls:
+		Threads in operating systems have two modes of operation -  user mode and kernel mode.Kernel mode threads have the privilege to access
+		certain functions, which are protected from the users to avoid intervention and misuse. But, sometimes it becomes essential for these 
+		user programs to access these functions.This can be achieved by using System Calls.System call provides user with access to kernel 
+		instructions. Using system call, OS programmers can control user behavior to ensure that instructions are used properly and no harm is
+		done to the operating system. The operating system will automatically switch from user mode to kernel mode when the system call is 
+		invoked from user program.This is achieved by using interrupts and exception handling mechanisms.
+		Thus, in this phase we are going to implement system calls such as:
+		
+		-Locks: Create, Acquire, Release, Delete
+		-Condition Variables: Create, Wait, signal, broadcast and delete.
+		-We also implement syscalls for yield, exit, fork, exec userprogram test
+
+		We also write a test suite for the designed system calls.
+
+
+	Part 2: MULTIPROGRAMMING
+	------------------------
+
+	+ Multiprogramming:
+		Multiprogramming allows several user programs to run concurrently using multiple processes and multiple threads within each process.
+		In order to support this, the physical memory needs to be able to contain multiple address spaces, one for each process. While the
+		process itself needs to contain multiple stacks for each thread. Thus we need page table to provide address translation and to
+		allocate memory efficiently.
+		
+		Inorder to achieve multiprogramming we have to:
+		-Complete implementing Fork and Exec system calls to support multiprogramming.
+		-Modify addressspace and page table
+		
+		We also write a test suite for multiprogramming.
+
+
+    II. ASSUMPTIONS:
+    ================   
+    + We assume that the physical memory never runs out. So while trying to allocate a pagetable for a process or while incrementing the number of pages required
+      for a process when a new thread is forked, if we find that the main memory is full, we display the message "main memory full" and exit the program.
+      The user is supposed to increase the number of page limit NumPhysPages in machine.h appropriately. In order to run multiple instances of our senate program
+      the user is directed to set the NumPhysPages variable in machine/machine.h to a safe level of about 4096.
+
+
+    III. DESIGN: 
+    ============
+
+	Part 1 : SYSTEM CALLS
+	---------------------
+
+	We implemented a set of system calls for Lock and Condition variables based on our Project 1 designs. Yield and Exit system calls are also implemented.  
+	
+	1) int CreateLock(unsigned int vaddr, int len)
+
+		User can create a lock by invoking the above syscall. The function in turn returns a lock id. This id is later on used by the user program to access
+		the lock. The lock pointers created by the user program are stored in a linked list for future traversals.
+
+		* Read the lock name from register 4 and the length of the name from register 5.
+		* Error allocating kernel buffer in CreateLock - Happens when there isn't enough memory to allocate for an array to store the Lock's name.
+		* Bad pointer passed to CreateLock - Happens when virtual address to physical address conversion fails.
+		* Create lock
+		* Append it to the lock queue
+		* Return the lock id
+
+	2) void AcquireLock(int lockID)
+
+		* Read the lock id parameter passed to the syscall
+		* Traverse the linked list where lock pointers are stored by using the search function defined newly in list.cc
+		* Check for the locks status and if alraedy busy will put in wait queue as per project1
+		* acquire the lock.
+
+	3) void ReleaseLock(int lockID)
+
+		* Read the lock id from the parameter passed into register 4.
+		* Call the release function written in project1
+		* Checking for various error conditions and authenticity issues are taken care by the release function itself.
+
+	4) void DeleteLock(int lockID)
+
+		* Read the lock id value from the parameter passed into register 4.
+		* Using the lock id traverse the list of stored lock pointers.
+		* Now, call the destructor for the corresponding lock as per project 1 code.
+
+	5) int CreateCondition(unsigned int vaddr, int len)
+
+		Condition Variables are created using the CreateCondition_Syscall. The function in turn returns a condition id. The condition variables created are
+		stored in a linked list. The id is used to traverse the list and access the respective condition variable. This is to ensure that the condition variables
+		are not accessed without authenticity.
+
+		* Read the condition name from register 4 and the length of the name from register 5.
+		* Error allocating kernel buffer in CreateLock - Happens when there isn't enough memory to allocate for an array to store the Lock's name.
+		* Bad pointer passed to CreateCondition -  Happens when virtual address to physical address conversion fails.
+		* Create condition varoiables
+		* Append it to the Condition queue
+		* Return the condition id
+
+	6) void WaitCV(int condID,int lockID)
+
+		* Read the respective condition Id and the Lock Id from the parameters passed in register 4 and register 5.
+		* Using the values of the condition Id and the lock Id access the lock and condition variable pointers.
+		* Use these call the wait.
+		* The project 1 code will take care of the remaining functionalities.
+		* Checking whether the lock being passed is the correct lock of the queue, and not allowing threads to go on a wait by passing a free lock or
+		  lock held by other threads are taken care of in Wait() written in project1
+
+
+	7) void SignalCV(int lockIndex, int condIndex)
+
+		* Read the respective condition Id and the Lock Id from the parameters passed in register 4 and register 5.
+		* Using the values of the condition Id and the lock Id access the lock and condition variable pointers.
+		* Use these to call the signal().
+		* The project 1 code will take care of the remaining functionalities.
+		* Checking whether the lock being passed is the correct lock of the queue, and not allowing threads to signal by passing a free lock or
+		  lock held by other threads are taken care of in Signal() written in project1.
+
+
+	8) void BroadcastCV(int condID,int lockID)
+
+		* Read the respective condition Id and the Lock Id from the parameters passed in register 4 and register 5.
+		* Using the values of the condition Id and the lock Id access the lock and condition variable pointers.
+		* Use these to call the broadcast().
+		* The project 1 code will take care of the remaining functionalities.
+		* Checking whether the lock being passed is the correct lock of the queue, and not allowing threads to broadcast by passing a free lock or
+		  lock held by other threads are taken care of in broadcast() written in project1.
+
+
+	9) void DeleteCondition(int condID)
+
+		* Read the condition id value from the register 4.
+		* Using the condition id traverse the list of stored condition pointers.
+		* Now, call the destructor for the corresponding condition as per project 1 code.
+
+
+	10) void Yield()
+		Yield is called whenever threads want to give up the CPU.
+		* Simply invoke Yield().
+
+	11) void Exit()
+
+		The threads call the exit() syscall whenever they have finished completing the task assigned. But, certain conditions need to be cheked while 
+		implementing the exit syscall. If the current thread that wants to terminate is the last thread of the process, then the entire process must terminate.
+		And if its the last thread of the last process then nachos must exist. To achieve this we need to maintain a datastructure, keeping track of all
+		the processes and their corresponding threads. This is taken care of by implementing a Process Table.
+
+		Process Table
+		-------------
+		The process stable is a structure. The structure consists of datas like:
+		
+		*  process id
+		*  address space allocated for the process
+		*  process id of the parent
+		*  count of child processes the current process has.
+		*  Details of the child process, declared as separate class objects.
+		*  Thread count.
+		*  The thread pointer of its parent
+		*  Condition the process is waiting on For Exiting;
+		*  exitStatus;
+		*  The maximum number of process that can be allowed.
+
+		void Exit_Syscall()
+
+		* Read the process name and length of the name from register 4 and register 5 respectively.
+		* Check for non-existent process request and other errors
+		* If the finishing theread is not the main thread and not the last thread of its process then :
+			-acquire process table lock, decreement the number of threads running in the process and call the finish()for the thread.
+		* If the thread about to finish is the last thread of a process
+			-acquire the process table lock
+			-set the exit status of the process to true.
+			-stack needs to be cleaned up.
+			-the number of running threads count is decremented to zero and trhe parent process is informed.
+			-call the finish()to exit	
+		* If the thread is the last thread of the last process
+			-Acquire the process table lock
+			-check if i am the main thread of the process.
+			-if so assign the relevant process table variables
+			-call the halt function to terminate nachos.
+
+	12) void Write(char *buf, int len, int where)
+		
+		This system has already been written down. But we made a small modification, such that the function prints till it encounters a \0 instead of printing
+		all the characters. The advantage is that, you can put any value of length greater than the actual length of the string. This greatly helps in writing
+		down Write fastly without having to count the number of characters to pass.
+
+	13) void WriteNum(int num)
+		
+		This function directly prints the number that is passed to it.There is no need for address translation etc. 
+
+	14) int CheckCondWaitQueue(int condID)
+
+		This function faciliates to find whether there are some threads that are waiting on a particular condition. We pass the condition id to the function.
+		1 is returned if some thread is waiting or else 0 is returned.
+
+	15) int RandomFunction(int range)
+		
+		This function returns a random number between 1 and range.
+	
+		PART 2 : MULTIPROGRAMMING
+		-------------------------
+
+		In developing a system supporting multiprogramming we need to ensure that multiple processes can be loaded and run simultaneously
+		At the same time, each process should be able to support multiple threads. The nachos address space needs to have multiple stack
+		blocks for multiple threads to run within a process. The threads share the same address space and data but will have different stacks.
+		Presently nachos supports single process as the virtual address space is directly mapped to the physical memory. Inorder to run 
+		multiple programs we need to load different process's address space in the main memory. For, this we use the concept of paging. The 
+		address space is divided into multiple pages. the size of each page is 128 bytes as defined by the system.We need to maintain a 
+		pagetable for each process to see where exactly in memory is the address space stored in page format.On accessing the page table 
+		the code and data can be loaded or accesed in memory using address
+		translation.
+
+		A bitmap is used to keep track of occupied pages in the physical memory, and needs to be updated upon memory allocation and deallocation.
+		Now the code and data in the executable can be copied page by page into the physical memory and these pages may need not be contiguous
+		as the CPU executes instructions based on virtual addresses.
+
+		We execute the exec(), fork() syscalls in this section.
+
+	16) SpaceId Exec_Syscall(int vaddr, int len)
+
+		Exec creates a new process with a new address space. It takes a user program executable file as an input. Now a place in the 
+		main memory is allocated for this address spaces in multiple pages and the corresponding process table is built for the process. 
+		The required memory size and  number of pages can be calculated from the information contained in the Noff file header. 
+		Contents in the executable will then be copied page by page from disk to the main memory. The following procedure is followed
+
+			* Read executable file from machine register R4 and its length from register 5.
+			* Open the file using filesystem Open().
+			* Create a new address space for the process. In doing so
+				- Calculate the required number of memory pages.
+				- Find available pages in the main memory.
+				- Build the address translation table.
+				- Copy content from the executable to the main memory
+			* Create a new thread.
+			* Assign the address space to the thread space.
+			* Initialize and Update process table
+			* Increment PIDCount.
+			* Call Fork to put thread into ready list.
+			* Also we need to take care of any childprocess details that comes up
+			* Return ProcessID to user by writing it to register R2.
+			* delete executable.
+
+
+	17) SpaceId Fork(int vaddr)
+		
+		Fork is a system call implemented to spawn new threads. When a new thread is forked, a name for the thread is passed as an argument.The procedure
+		to create a new thread in the fork system call is as follows:
+
+			+ Create a new thread using the kernel level code.
+			+ Allocate its address space. Make it equivalaent to the address space of the thread that forks this new thread.
+			+ Since this is not the mainthread of the process, make its mainthread value 0.
+			+ Make the PID of this thread equivalent to the PID of the thread forking it.
+			+ Now update the page table:
+				- increase the number of pages by 8
+				- update other page table entries that include physical pages,valid bit,use,dirty bit and readonly.
+			+ Now, run a loop starting from old numpages value to new numpages value
+				- Now find the spot in memory that is free and then make it filled. If this returns a -1 then it means that the main memory is full.
+				- Again update the page table with new values of the physical memory
+			+ Acquire a lock
+				- Increment the current thread's (the thread that forked the new thread) thread count.
+				- Set the parent thread of the new thread to the thread that forked it.
+				- Set the exit status indicator to FALSE
+			+ Release the lock
+			+ Update the details by a call to setPageTable
+			+ Acquire the lock again to update machine->pageTable and machine->pageTableSize
+			+ Delete the local pageTable object inside the Fork syscall.
+			+ Now Fork the new thread by a call to kernel_thread and wait on a condition variable to release the lock.
+			+ In the kernel_thread function
+				- Obtain the same lock that the Fork syscall is waiting on
+				- Put the value of virtual address in PCReg
+				- Put virtual address+4 in NextPCReg
+				- Call RestoreState Function to update pageTable and pageTable size
+				- Write the starting position of the stack of the new thread into the stack register
+				- Signal the Fork syscall so that it can release the lock
+				- Release the lock inside kernek_thread
+				- call machine->Run()
+			+ There is a global variable called threadPIDCount, which keeps tracks of the number of threads. So that we set that as the thread spaceid
+			  and increment it. 
+			+ Release the lock and return thread spaceid.
+				
+
+
+
+
+	PART 3: Multiple Senate-Pay-phones Systems
+	------------------------------------------
+		
+		This is implemented to run multiple senate pay phone systems in parallel as different processes using the exec syscall where we can have 1 president,
+		multiple senators, multiple visitors and multiple operators in each process.
+
+		Here, we put the code for the senate system in the a file under the test directory. Make multiple calls to this file by using exec and pass
+ 		this file name as argument from a different file under the test directory. There is a restriction on the number of senate pay phone systems that can 
+		run simultaneously due to memory considerations. So we have set our NumPhysPages to 4092. This allows for example upto about 10 senate pay phones 
+		each with 3 number of operators, senators and visitors. 
+	
+		We still have the randomness associated with each senator's ID (with probability 50%) and with whether visitor pays money or not (with probability 80%)
+
+		The design for this part is retained from the design of part 2 of project 3.
+
+
+
+    IV Implementation:
+    ==================
+
+    		
+			Part 1 & 2: System Calls & Multiprogramming
+			--------------------------------------------
+
+	+ Files Modified
+	---------------- 
+		* start.s
+		* addrspace.h 
+		* addrspace.cc
+		* exception.cc 
+		* progtest.cc 
+		* syscall.h
+
+	+ Files Added
+	--------------
+
+		* process.h
+		* process.cc
+		* All the Test suites.
+
+	+ Data Structures Added
+	-----------------------
+		These data structures are added to process.h file
+
+
+		* struct processTable
+			{
+				public:
+				SpaceId PID;
+				AddrSpace *parentSpace;
+				SpaceId parentPID;
+				int childProcessCount;
+				class childProcessDetails childProcessDetailsArray[MAXPCHILDREN];
+				int threadCount; //starts from 0
+				Thread *parentThread;
+				Condition *waitForExiting;
+				int exitStatus;
+
+			}pTable[MAXPROCESSES];
+
+
+		* class childProcessDetails
+			{
+				public:
+				SpaceId childPID;
+				AddrSpace *childSpace;
+			};
+
+		
+ 	+ Data Structures Modified
+	---------------------------
+		
+		none
+
+
+ 	+ Functions Modified
+	--------------------
+		
+	* AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles)		
+
+	* void StartProcess(char *filename)	
+		
+	* AddrSpace::InitRegisters()
+
+	
+		
+	+ Functions Added
+	-----------------
+
+	* int CreateLock_Syscall(unsigned int vaddr, int len)
+
+	* void AcquireLock_Syscall(int lockID)
+
+	* void ReleaseLock_Syscall(int lockID)
+
+	* void DeleteLock_Syscall(int lockID)
+
+	* int CreateCondition_Syscall(unsigned int vaddr, int len)
+
+	* void WaitCV_Syscall(int condID,int lockID)
+
+	* void SignalCV_Syscall(int condID,int lockID)
+
+	* void BroadcastCV_Syscall(int condID,int lockID)
+
+	* int CheckCondWaitQueue_Syscall(int condID)
+
+	* void DeleteCondition_Syscall(int condID)
+
+	* void exec_thread(int what)
+
+	* SpaceId Exec_Syscall(int vaddr, int len)
+
+	* void kernel_thread(int vaddr)
+
+	* SpaceId Fork_Syscall(int vaddr)
+
+	* void Exit_Syscall(int status)
+
+	* void WriteNum_Syscall(int i)
+
+	* int RandomFunction_Syscall(int i)
+
+	* void Concatenate_Syscall(int vaddr,int len,int a, int vaddr2)
+
+	
+			Part 3 : Multiple Senate Pay Phone Systems
+			------------------------------------------
+
+	+ Files Modified
+	  --------------
+		
+		None
+
+
+	+ Files Added
+	  -----------
+		
+		All the testsuites
+
+	  
+
+
+
+
+	V. TESTING
+	==========
+
+	+ Part I
+		
+		+ How to test
+		
+			Run nachos -x ../test/testsuite1 -d y
+
+		+ Test Output
+
+			* Initially visitorCountLock and MAX number of Locks "locks" and Condition variables "conds" are created.
+			* Then MAX number of threads (TestFunc) are forked.
+			* Each of the threads grab an id. They then acquire their Lock lock[id] and wait on it. 
+			* The main function then signal on these condition variables using these locks. 
+			* The threads wake up and display a message "woken up".
+			* We also note that trying to acquire a lock that doesn't exist or a lock with negative identification results in a display of error.
+			* We also delete all the locks and condition variables created in the program.
+
+	+ Part II
+	
+		+ How to test
+	
+			Run nachos -x ../test/testsuite2 -d y
+
+		+ Test Output
+	
+			* The program issues two exec commands and so executes ../test/testsuite2_1 and ../test/testsuite2_2
+			* The program then forks MAX number of TestFunc() threads. 
+			* Each thread acquires a lock and then reads its id and then releases it.
+			* Each thread also issues a Yield command.
+			* The output indicates how each thread or process exits.
+			* Every time a thread exits, it displays a message. It just finishes if there are more threads running.Otherwise if it is the last
+			  thread then  it wakes up its parent thread.
+			* The exit display messages also indicates whether an exiting process is the last process or not.
+			* So here testsuite2 execs testsuite2_1 and testsuite2_2. testsuite2_2 execs testsuite2_3 thrice.
+			* So totally there are six processes with ids ranging from 0 to 5.
+			* Each of the thread forked yields and when the new thread is forked, the previous thread exits. So for sometime, the thread count 
+			  always remains 2.
+			* When the last thread exits, the exit system call displays that the last process is going to terminate.
+
+	
+	+ Part III
+	
+		+ How to test
+	
+			Run nachos -x ../test/testsuite3
+
+		+ Test Output
+
+			* The program begins with asking the number of senate programs to run. 
+			* Based on the number input, those many number of senate programs are exececuted using exec.
+			* Each senate program asks whether you want to perform a system test or a a set of repeatable tests.
+			* The system test sends in a president, then senators, and then visitors.
+			* This order can be changed in the repeatable test. This is well documented in our first project writeup.
+			* At the end of the program, the summary threads display a summary for each program. So if we had ran the senate program 5 times
+			  we would get 5 summaries each for each program. Note that the number of visitors is equal to the sum of the number of visitors 
+			  accepted and denied.
+
+
+
+
+	VI. DISCUSSION
+	==============
+
+
+	+ Experiment Expectation
+	-------------------------
+
+		Part 1 System Calls
+		-------------------
+
+		The system should support the existing OS syscalls as well efficiently incorporate the new syscalls. Lock and conditional
+		variable should behave as they were in kernel mode. User should not be able to directly access them. The user programs should
+		access the OS resources and operations only by invoking syscalls. For, this the user programs should operate in the kernel mode
+		while doin so. Most of the protections should be provided from the kernel-level code (implemented in Project 1) and not as much 
+		in the system call functions.
+	
+
+		Part 2 Multiprogramming
+		-----------------------		
+
+ 		We expect that multiple processes/user programs and each having multiple threads run concurrently. Threads should be allocated
+		their own stacks. But they share code and data with the other threads in the same process. Each process has its own address space.
+		Each Process should run independently in separate address spaces in the main memory without any intervention. This allocation is 
+		in the form of pages. When Exit is called, physical memory for stack or the whole address spaces, should be deallocated depending
+		on whether it is the last thread or the last process.
+
+        
+	+ Experiment Result
+	-------------------
+
+		Part 1 System Calls
+		-------------------
+
+		As expected the system supports the existing OS syscalls as well as the new syscalls. Lock and conditional variable operations
+		work normally. User programs do not directly access OS functions. The user programs access the OS resources and operations only 
+		by invoking syscalls from the kernel mode.
+	
+
+		Part 2 Multiprogramming
+		-----------------------		
+
+ 		As expected multiple user programs, each having multiple threads run concurrently. Threads are allocated
+		their own stacks. Each process has its own address space.Each Process runs independently in separate address spaces
+		in the main memory without any intervention. When Exit is called, physical memory for stack or the whole address spaces,is deallocated depending
+		on whether it is the last thread or the last process.
+
+
+
+	+ Experiment Explanation
+	------------------------
+
+	
+		By using  Process table, we were able to manage threads and process effectively when created by Fork or Exec, or destroyed by Exit.  
+		In conclusion, in this project, we have learnt the concepts of system call, and what are required in an operating system to support 
+		multiprogramming. We have used system calls to provide means for user to access certain kernel operations. 
+		We realized that memory management is very important for running concurrent processes. Without them, physical memory would be 
+		inefficiently utilized and multiple address spaces would not be possible to exist in the same physical memory.
+
+
+
+
+    VII. MISCELLANEOUS
+    ==================
+
+    Our Senate system is quite bulky since it has about 17 repeatable tests and a system test. Also we have summary threads which, at the end of the program, display 
+    the summary of the program. So as a result, it is not possible to fit two senate programs within 512 pages of main memory. So the submission as of now, has the 
+    number of physical pages set to 4096. We haven't implemented Join as it is not required to do so.
+
+

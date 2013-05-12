@@ -1,0 +1,6 @@
+This is a project done as a part of Operating Systems course at USC during Fall 2008.
+
+  - Implemented Thread Synchronization, Multiprogramming & System Calls, Virtual Memory and Networking & Distributed OS.
+  - Programmed Fork, Exec and Exit system calls using custom implementation of Locks & Condition Variables.
+  - Implemented Translation Lookaside Buffer (TLB), Page Table, Inverted Page Table (IPT) and Swap File for virtual memory.
+

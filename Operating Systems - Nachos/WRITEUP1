@@ -1,0 +1,957 @@
+
+Title: Writeup for Project 1, Fall 2008
+
+Date: 09/21/08
+
+I. Requirements:
+----------------
+
+   +     Part 1:
+   
+	In this part of the assignment we are implementing a multi-Thread system with Locks and Condition Variables in Nachos.Issues such as Mutual exclusion, Race conditions
+        and deadlocks should be addressed while designing the system.Concurrency in  multiple threads is ensured by efficient CPU scheduling.
+          
+   * Multithreading
+        Operating Systems can have multiple execution streams called threads for each process. Thread is the basic unit of CPU utilization.
+        Multiple threads share the same program code, data and operating system resources (such as memory and file access) within a process. Multithreading is a 
+	popular programming and execution model that allows multiple threads to exist within the context of a single process, sharing the process resources but
+        able to execute independently. Each thread maintains its own exception handlers, scheduling priorities, and a set of structures that the operating system uses
+        to save the thread's context if the  thread cannot complete its execution during the time that it was assigned to the processor. The context is held until the
+        next time that the thread receives the processor time. The context includes all the information that the thread required to seamlessly continue its
+	execution. This information used includes the thread's set of processor registers and the call stack inside the space of the host process.Threads switch between 
+        the New, Running, Ready and Blocked states.
+
+   * Context Switching
+	Users and programs share operating system resources such as memory, data and CPU time.This optimum utilisation of resources is achieved by context switch.
+        A context switch is the switching of the CPU from one process or thread to another.Context Switching can happen during while MultiTasking, During handling of interrupts
+        or Transition between User and Kernel Mode.Context switching allows for concurrency. But, the best time to context switch is when:
+                 
+              *user program finishes   *new program arrives
+              *a user program requests for an opearation 
+              *a maximum amount of time has elapsed
+
+   * Atomic Operation
+	One or more tasks are executed as a single operation so that there is no context switching before they finish. Atomic operations do not allow any interference with
+        shared data.Atomicity can be ensured by disabling interrupts.
+
+
+   * Critical Region
+	A critical region is a piece of code that accesses a shared resource (data structure or device) that must not be concurrently accessed by more than
+        one thread of execution. Critical regions can be protected by locks, monitors or semaphores.
+
+   * Mutual Exclusion
+	This is a logic used in programming to avoid the simultaneous use of  global variables or critical sections in some 
+	places of the code.  To enforce Mutual Exclusion, we incorporate the concept of locks and condition variables.This takes care of undesired context
+	switching. If we do not enforce Mutual Exclusion, then the shared data may be accessed simultaneously by multiple threads and the
+        outcome may not be deterministic and thus cannot be relied on.
+
+   * Race Condition
+	A race condition is a situation in which the final result depends on the random timing of how the threads are scheduled.Thus race conditions
+	can lead to inconsistent and unpredictable result.Race conditions can be avoided by proper synchronisation. 
+
+   * Lock
+	* Lock operations must always be atomic. 
+	* A thread can acquire a lock only when it is free.
+	* A lock cannot be reacquired if it is already acquired by the same 
+	  thread.  
+	* A thread must wait (sleep) in a lock queue when the lock is held by 
+          other threads. Busy-waiting is prohibited.
+	* Lock can only be released by the thread owning the lock.
+	* A thread must pass a lock to another waiting thread, if any, at the 
+          time of releasing. This is to prevent starvation on the lock.
+
+   * Condition Variable
+	* Condition variable operations must always be atomic. 
+	* Wait(), Signal() and Broadcast() are the condition variables that can be used by a thread on acquirng the corresponding lock.
+	* A thread waiting on a condition variable to occur must wait (sleep) in an appropriate wait queue associated with the lock. Before
+	  going to sleep, thread must release a lock and should re-acquire it  after being woken up (when signalled by another thread). 
+	* Signal operation should wake up one thread and put it in the ready list without relinquishing a lock or the CPU.
+	* Broadcast will wake up all threads waiting on the condition variables
+	  by putting them all in the ready list.
+
+    * Monitor
+        The combination of locks and conditions along with a shared variable which can
+        be used in various parts of the program is known as the monitor. Thus
+        when a particular lock and condition variable is called, it checks for
+        the monitor variable first. Accordingly, a required action is taken on
+        a particular thread or a process.
+
+   * Semaphore
+	* All semaphore operations are atomic in nature.
+	* A semaphore is similar to a monitor. But has a constant value which 
+          is either incremented or decremented.
+	* The decrement function is represented by P() and an increment 
+          function as V().
+	* This is used in the concept of synchronization when 2 threads want to
+	  access the same shared resource.
+	* In a semaphore, the increment function V() is called when a thread is
+          finished accessing the resource.
+	* The decrement function P() regulates the access of resources to the 
+	  threads. It decrements the value of the semaphore and if the value of
+	  the semaphore is "0" {zero}, then the access to the shared resources
+	  is blocked until another thread calls the V() function.  
+
+
+    +   Part 2:
+  
+
+	In the part 2 of our project we have simulated a Senate Pay Phone System. The pay phone is used by The President, Senators and several visitors.
+        There are 20 phones that can be used. Calls from these phones are directed through the operators after verification. The user can input a desired number of senators,
+        operators and visitors.Each of these people can be simulated as separate threads. We have to use the concept of Locks and Condition Variables to ensure that
+        all our threads are synchronized and thereby given access to the phone at the right time.
+
+        There are certain priority schemes while the users try to acquire the phone:
+        The President gets the highest priority, ahead of senators and visitors. For security reasons, nobody talks when the president is using the phone.
+        However the president has to wait before all the users complete their calls, i.e he can't pre-empt a current user.President makes a total of 5 calls.
+        Senators get priority before the visitors. They make a total of 10 calls each.
+        Visitors have the lowest priority. But, they atleast get the phone once others are done.
+
+        Each phone can be used by only one person at a time. Others need to wait in the lock queue for acquiring the phone.
+        The visitor has to pay $1 to the operator he/she is assigned inorder to proceed making a call. The senators have to provide their ID to make a call. Thus, the operator
+        takes care of the verification mechanism and grants access to the users to make calls. There is no priority scheme to acquire the operator.
+        These threads interact through the means of shared variables. These shared variables are protected by monitors.
+
+	We need to run exhaustive test cases to check the correctness of the system. 
+
+  II. Assumptions:
+  ----------------
+
+   +    Part 1
+
+        * No assumptions
+       
+
+
+   +    Part 2
+
+        * Every visitor who pays the operator gives exactly $1. 
+        * Senators with ID > 1000 are given permission to make the call.Others are denied access.
+        * Even though,the user is free to input any random number of visitors and senators, we limit them to 284 as the system would run out of memeory while 
+          creating so many threads
+        * Operator immediately grants access to President without any verification.
+
+
+ III. Design
+ ------------
+
+    + Part 1
+	
+	The design of part 1 of the project is mainly to implement the various functions that are requried for thread synchronization. This includes writing the
+	code for acquiring a lock, releasing a lock, wait a condition variable, signal a thread waiting on a condition variable and  broadcast all the waiting threads.
+	This mainly revolves around the manipulation of two files, viz. synch.h and synch.cc. The synch.h file contains the prototype for acquiring and releasing the 
+	lock inside the class Lock. The implementation of the functions are written in the file	synch.cc. Similarly, the class Condition contains the prototype for the 
+	functions to wait on a condition variable, to signal a thread waiting on a condition variabe and to broadcast all waiting threads. These functions are also
+        implemented in the file synch.cc. The test cases that were provided to test the part 1 code was implemented by putting the test cases in another file called
+	threadtest.cc and were run from there.
+
+	The pseudo code for all the functions is given below:
+ 
+        Lock::Acquire() ------- pseudo code to acquire a lock
+  	 {
+	  Disable all the interrupts
+	  Check if the lock is available
+		make the lock busy
+		make the current thread the lock owner
+	  Else if the lock is not available
+		make the current thread to wait for the lock by adding it to the lock's wait queue
+		make the current thread to sleep
+          Restore all the interrupts
+	 }
+
+	
+	 Lock::Release() ------ pseudo code to release a lock
+	 {
+	  Disable all the interrupts
+	  Check which thread is currently the lock owner
+		If the current thread is not the owner, then jsut return
+		Don't release the lock
+		Restore all the interrupts
+	  Check for a waiting thread
+		If one thread is found
+			wake them up and put them on ready queue
+			remove them from the wait queue
+			make that thread the lock owner
+	  If there are no waiting threads
+		make the lock available
+		clear the lock ownership
+	  Restore all the interrupts
+	 }
+
+
+	Condition::Wait(Lock *lock) ----- wait on the condition variable
+	 {
+	  Disable all the interrupts				     
+	  keep track of which lock is being used with this condition variable
+		save the lock pointer in the condition class for the first thread that 
+		calls wait i.e. the first waiting thread (note that all waiters wait 
+		using the same lock)
+	  Release the lock i.e. exit the monitor now
+	  Add the thread to the condition variable wait queue
+	  Put the current thread to sleep
+	  Now acquire the lock again - this will happen once the thread is woken up
+	  Restore all the interrupts
+	 }
+
+	Condition::Signal(Lock *lock)
+	 {
+	  Disable all the interrupts
+	  If there are no waiters, just restore the interrupts and return
+	  If there are waiters, then verify if the signaller's lock matches with the waiter's lock
+		if they don't match, print a message, restore interrupts and return
+	  Wake up one waiter
+		remove the waiter from the condition variable wait queue and put them on the ready queue
+	  if there are no more waiters then clear the lock ownership
+	  Restore all the interrupts
+	 }
+
+	Condition::Broadcast(Lock *lock)
+	 {
+ 	  while there are waiters
+		call the signal function passing the lock
+	 }
+
+
+	There is another function to check if the lock is held by the current thread under execution. The pseudo code for the function is given below. This function is
+	also a function with boolean return type. It returns 1 if the current thread is the owner of the lock. Otherwise it returns 0.
+
+	bool Lock::isHeldByCurrentThread()
+  	 {
+	  if current thread is the owner of the lock 
+		return 1
+	  else
+		return 0
+	 }	  
+
+    + Part 2
+
+	In our design, we have used threads for each customer (President, Senator and Visitor) and for each Operator so that they can act
+	independently of each other. In order to ensure mutual exclusion while accessing shared resources between different threads, we
+	make use of Locks and for synchronization purposes we make use of monitors and their associated condition variables and monitor/
+	shared variables. For example, everytime a value is to be accessed (to be read or written) by two different threads, a lock is used
+	to protect the value and to enable mutual exclusion. Phones are just shared resources and so an array would suffice (instead of
+	using threads). So an array of size equal to the number of phones is created which holds values for indicating whether a phone is 
+	busy or available. 
+
+	Furthermore, we make use of a different thread which runs at the end to display the summary. 
+
+	A high level run-through of our design is as follows:
+	1. Fork all the threads (Operators, President, Senators and Visitors)
+	2. The operators make themselves free.
+	3.(i) The president checks the status of the phones and if they all are free he gets a phone. If not, he adds himself to a president waiting queue.
+	  (ii) The president gets an available operator and tells him that he is the President.
+	  (iii) Upon getting a 'go ahead' from the operator, the president starts speaking. 
+	  (iv) When done with the talking, the president tells all other waiting customers (senators and visitors) to make use of the phones available now.
+	  (v) The president goes away for a random time and comes back.  The total number of times he comes back to talk is equal to 5.
+	4.(i) A senator sees whether a president is waiting in the line or is already talking. If so he adds himself to his senator waiting queue.
+	  (ii) As in the case of a president, the senator obtains an operator and tells him that he is a Senator.
+	  (iii) He submits his ID to the operator. 
+	  (iv) The operator checks the ID of the senator and if it is a valid ID (say greater than or equal to 1000) then gives a 'go ahead' 
+	       otherwise denies the senator's request.
+	  (v) When done talking a senator signals a president if he (senator) is the last guy speaking on the phone and if the president is
+	      waiting for the phone. Otherwise, the senator wakes up any waiting senator or a waiting visitor, in that order.
+	  (vi) The senator goes away for a random amount of time and comes back. The total number of times he comes to call is equal to 10.
+	5.(i) A visitor sees whether a president is waiting for a phone or is already speaking or whether a senator is speaking. If so he adds
+	      himself to the visitor waiting queue.
+	  (ii) He tries and obtains an operator and tells him that he is a visitor. 
+	  (iii) He does or doesn't deposit money (done randomly). 
+	  (iv) If visitor deposits money, he gets the 'go ahead' from the operator, else is denied.
+	  (v) When done talking, the visitor checks whether he is the last guy using the phone. If so he wakes the president (if there is a
+              president waiting). Otherwise, he wakes up a senator or a visitor (in that order).
+	6. When all the threads are run, a summary thread displays a summary of the execution output with few insights.
+	
+	We input the number of senators in Ns, visitors in Nv and number of operators in Nop. This helps to keep the program generic and it 
+  	can be tested for various combinations of the values based on the user's wish.
+
+
+	* IMPORTANT VARIABLES
+		1. NOOFPHONES  - number of threads (this is not a variable but is defined as a constant)
+		2. Nv - number of inputs
+		3. Ns - number of senators
+		4. Nop - number of operators.
+		5. phoneStatus[NOOFPHONES]
+		6. moneyReserve[Nop] - money reserve of each operator.
+		7. visitorAcceptCount - number of visitors accepted.
+
+
+	* THREADS:
+		We make use of the following threads
+		1. President //(one is forked)
+		2. Senator //(Ns threads are forked)
+		3. Visitor //(Nv threds are forked)
+		4. Operator //(Nop threads are forked)
+		5. Summary //(1 thread is forked - useful to display the summary after all threads finish and before nachos exits).
+
+
+	* LOCKS:
+		1. phoneLock // protects phoneStatus[NOOFPHONES]
+		2. operatorLock // a master lock for all operators
+		3. individualOperatorLock[Nop] //a lock for each operator.
+		4. visitorCountLock  // a lock to protech visitorAcceptCount
+
+
+	 * MONITORS
+
+		1. LOCK : phoneLock
+		   CV	: presidentNeedsPhone		 // condition that the president needs phone
+		   MV   : phoneStatus[NOOFPHONES]
+
+		2. LOCK : phoneLock
+		   CV   : senatorNeedsPhone 		//  condition that the senator needs phone
+		   MV   : phoneStatus[NOOFPHONES]
+
+		3. LOCK : phoneLock
+		   CV   : visitorNeedsPhone 		//  condition that the visitor needs phone
+		   MV   : phoneStatus[NOOFPHONES]
+
+		4. LOCK : operatorLock
+		   CV   : processCustomer 		// condition that a customer is to be processed by an operator.
+	 	   MV   : operatorStatus[Nop], freeOperators
+
+		5. LOCK : operatorLock[who]  		   // who is the index of operator
+		   CV   : waitForOperatorVerification[Nop] // contition that a customer needs operator verification.
+		          waitForCaller[Nop] 		   // condition that an operator waits for a caller
+		   MV   : authenticationMechanism[who]	   // equal to 3,2,1,0 for president, senator, visitor and intially
+			  repositoryID[who]		   // senator puts his ID in this	
+			  repositoryMoney[who]		   // visitor puts money in this
+			  activate[who]			   // acceptance/denial information put in this. 
+
+
+	  * PSEUDO CODE:
+
+		President(int who)
+		{
+			// Acquire Phone Lock (phoneLock)
+			// Tell everybody that I have come by making presidentStatus to be TRUE.
+			// Check if all phones are free.
+			// If all phones are free, make the status of a phone (typically the first) to be busy.
+			// Else add myself to presidentNeedsPhone wait queue.
+			//Somebody wakes me up (at which point all phones are free)
+			// Make the first phone (which is always the first free phone) to be BUSY.
+			// Once a phone is got and once its status has been set to BUSY, release the phoneLock. 
+			// Acquire Operator Lock (operatorLock)
+			// While ('while' because of MESA style) there are no free operators, add myself to the wait queue for processing customers (processCustomer)
+			// Now that there is/are some free operator(s), find out which one it is. 
+			// Acquire that particular individual operator's lock.
+			// Release the Operator Lock.
+			// Make that operator's status to be BUSY and decrement the count of number of free operators.
+			// Set the authentication mechanism to be that suitable for President (authenticationMechanism = 1);
+			// Wait for Operator Verification (by adding to the wait queue of waitForOperatorVerification).
+			// The operator always gives a ACCEPTANCE to the president.
+			// The President is woken up and when it finds that it has been given ACCEPTANCE it calls for random time.
+			// Randomly generate a number between 1 and 20 and yield the current thread those many number of times. 
+			// When done talking, acquire the phone lock, set the phone status to be FREE and release the lock. 
+			// When finished talking, broadcast the senators and then visitors.
+			// Yield the current thread for random number of times to go away
+			// Repeat the above in a while loop for four more times.
+
+		}
+
+
+		Senator(int ID)
+		{
+			// Acquire Phone Lock (phoneLock)
+			// Wait on the senatorNeedsPhone condition for the following cases
+				// If presidentStatus is one (which means that the president is either talking or is waiting for a phone).
+				// If all phones are BUSY.
+			// Now that some free phone is available (and that the president is not there anywhere), obtain the first phone which is free.
+			// Set that phone's status to be BUSY and release the phoneLock. 
+			// Acquire Operator Lock (operatorLock)
+			// While there are no free operators, add myself to the wait queue for processing customers (processCustomer)
+			// Now that there is/are some free operator(s), find out which one it is. 
+			// Acquire that particular individual operator's lock.
+			// Release the Operator Lock.
+			// Make that operator's status to be BUSY and  decrement the count of number of free operators.
+			// Set the authentication mechanism to be that suitable for Senator (authenticationMechanism = 2);
+			// Give the senator ID to the operator (by storing in that operator's repositoryID variable)
+			// Wait for Operator Verification (by adding to the wait queue of waitForOperatorVerification).
+			// The operator accepts or denies the request based on the senator's ID (If ID >=1000 then accept otherwise reject).
+			// The senator must get woken up by the operator who authenticates him.
+			// Store the verification status in some temporarily variable and release the individual operator's lock.
+			// If accepted, randomly generate a number between 1 and 3 and yield the current thread those many number of times to simulate talking on phone. 
+			// When done talking, acquire the phone lock, set the phone status to be FREE and release the lock. 
+			// Check whether a president is present.
+			// If president is present check whether I am the last guy speaking on phone. 
+				// If so signal the president.
+			// Else signal a senator if he is present or a visitor if no senators are waiting and if a visitor is present.
+			// Yield the current thread for random number of times to go away
+			// Repeat the above in a while loop for 9 more times.
+
+
+		}
+
+
+		Visitor(int who)
+		{
+			// Acquire Phone Lock (phoneLock)
+			// Wait on the visitorNeedsPhone condition for the following cases
+				// If presidentStatus is one (which means that the president is either talking or is waiting for a phone).
+				// if a senator is waiting in senatorNeedsPhone condition
+				// If all phones are BUSY.
+			// Now that some free phone is available (and that the president/senator is not there waiting), obtain the first phone which is free.
+			// Set that phone's status to be BUSY and release the phoneLock. 
+			// Acquire Operator Lock (operatorLock)
+			// While there are no free operators, add myself to the wait queue for processing customers (processCustomer)
+			// Now that there is/are some free operator(s), find out which one it is. 
+			// Acquire that particular individual operator's lock.
+			// Release the Operator Lock.
+			// Make that operator's status to be BUSY and  decrement the count of number of free operators.
+			// Set the authentication mechanism to be that suitable for Visitor (authenticationMechanism = 3);
+			// Choose to pay $0 or $1 randomly. Put this value in repositoryMoney of the operator.
+			// Wait for Operator Verification (by adding to the wait queue of waitForOperatorVerification).
+			// The operator accepts or denies the request based on the money deposited (if money is 1 then accept, otherwise reject).
+			// The visitor must get woken up by the operator who authenticates him.
+			// Store the verification status in some temporarily variable and release the individual operator's lock.
+			// If accepted, randomly generate a number between 1 and 3 and yield the current thread those many number of times to simulate talking on phone. 
+			// When done talking, acquire the phone lock, set the phone status to be FREE and release the lock. 
+			// Check whether a president is present.
+			// If president is present check whether I am the last guy speaking on phone. 
+				// If so signal the president.
+			// Else signal a senator if he is present or a visitor if no senators are waiting and if a visitor is present.
+
+		}
+
+
+		Operator(int who)
+		{
+			// Acquire the Operator Lock
+			// Operator is starting afresh. So make operatorStatus[who] to be FREE and incrementing the number of free operators count (freeOperators).
+			// Signal any waiting customers (using processCustomer condition)
+			// Acquire the individual operator lock 
+			// Release the operator lock.
+			// While any customer sets his values wait on the waitForCaller condition variable.
+			// Once some customer signals this operator and wakes this up then check whether the submitted information are valid.
+				//If president, accept immediately
+				//If senator, accept if its ID is greater than or equal to 1000, else reject it.
+				//If visitor, accept if the money is equal to one (and increment its money reserve and increment the visitorAcceptCount) and reject if it is zero. 
+			// Signal those customers who are waiting for operator's verification on waitForOperatorVerification.
+			// Release the individual operator lock.
+		}
+
+
+		Summary()
+		{
+			// In a while loop, yield the current thread for (Ns+Nv+1)*100 times to give enough time for execution of other threads.
+			// Check if there are no threads in the waiting queue for each of the president or senators or visitors.
+			// If so then acquire the phone lock and check if at least one phone is occupied (and release the phone lock).
+			// If all phones are free which means that if everybody is done with talking and have left, then display the summary
+		}
+
+
+	Note that the visitor pays the money with probability 0.8. Senator IDs are correct with probability 0.5
+
+
+	In addition, there is another function defined in synch.h with boolean return type that is used to check if there are any threads waiting in a wait queue
+	associated with a condition variable. It returns 1 if there is any thread waiting and returns 0 if there aren't any thread waiting. The pseudo code is given
+	below:
+
+		bool Condition::isSomebodyWaiting()
+		 {
+		  return 1 if there is a waiting thread
+		  else return 0
+		 }
+
+
+IV. Implementation
+
+    + Part 1
+
+	* Files Modified
+
+		synch.cc
+		synch.h
+		threaddtest.cc
+
+	* Files Added
+
+		 No files were added
+
+	* Data Structures Added
+
+		 enum LosckState {FREE,BUSY} lockState; - Added to the file synch.h
+
+	* Date Structures Modified
+
+		class Lock
+		 {
+		  private:
+			enum LockState {FREE,BUSY} lockState;  //To maintain the state of a lock
+			Thread *lockOwnerThread;	       //The thread that owns the lock currently	
+			List *lockWaitQueue;		       //The wait queue for a particular lock
+		  //All other code is maintained as it is
+		 } 
+		
+		class Condition
+		 {
+		  private:	     
+			List *condWaitQueue;		      //The wait queue for a condition variable
+			Lock *trackCondLock;		      //track the condition lock on which a thread is waiting
+		 }
+
+	  The above modifications were done in the file synch.h
+
+	* Functions Added
+
+		No functions were added
+
+	* Functions Modified
+
+		Lock::Lock(char* debugName) 
+			{
+			  name = debugName;         //name of the lock
+			  lockState = FREE;         //intially set the state of the lock to be free
+			  lockOwnerThread = NULL;   //intially the thread the owns the lock if NULL
+			  lockWaitQueue = new List; //create a wait queue for the lock
+			}
+
+	
+		Lock::~Lock() 
+			{
+			  delete lockWaitQueue; //delete the lock's wait queue
+			}	
+
+
+		void Lock::Acquire() //code block to acquire a lock
+			{    		
+			  IntStatus oldLevel = interrupt->SetLevel(IntOff); //disable interrupts
+			  if (lockState == FREE)
+			    {
+			      lockState = BUSY;                  //if the lock is free, make it busy
+			      lockOwnerThread = currentThread;   //make the current thread, the lock owner thread
+			    }
+			  else
+			    {
+			      //printf ("\n Lock '%s' not available currently for thread \n",name);
+			      lockWaitQueue->Append((void *)currentThread);  //if lock is not free, then add the current thread to the lock's wait queue
+			      currentThread->Sleep();                        //put the current thread to sleep
+			    }
+			  (void) interrupt->SetLevel(oldLevel); //enable interrupts
+			}
+
+
+		void Lock::Release() //code block to release a lock
+			{
+			  IntStatus oldLevel = interrupt->SetLevel(IntOff); //disable interrupts
+			  Thread *thread;
+			  if ( !isHeldByCurrentThread() ) //check it the current thread is the owner of the lock
+			    {
+			      printf ("\n The current Thread is not the owner of the lock '%s' \n",name);
+			    }
+			  else
+			    {
+			      if ((thread = (Thread *)lockWaitQueue->Remove()) != NULL) //remove the thread from the lock's wait queue
+				{
+				  scheduler->ReadyToRun(thread);                        //put the thread in the ready queue
+				  lockOwnerThread = thread;                             //make it the owner of the lock
+				}
+			      else
+				{
+				  lockOwnerThread = NULL;                              //if there are no waiting threads, then clear the lock ownership
+				  lockState = FREE;                                    //set the lock state to be free
+				}  
+			    }  
+			  (void) interrupt->SetLevel(oldLevel);  //enable interrupts
+			}
+
+
+		bool Lock::isHeldByCurrentThread() //code block to check if the current thread is the lock owner
+			{
+			  if (lockOwnerThread == currentThread)
+			    return 1;   //return 1 if the current thread is the lock owner thread
+			  else
+			    return 0;
+			}
+
+
+		Condition::Condition(char* debugName)  
+			{
+			  name = debugName;          //name of the condition variable
+			  condWaitQueue = new List;  //create a wait queue for the condition variable
+			  trackCondLock = NULL;      //variable to track which lock is being used with the condition variable
+			}
+
+
+		Condition::~Condition()
+			{
+			  delete condWaitQueue;     //delete the condition variable wait queue
+			}
+
+
+		void Condition::Wait(Lock* conditionLock) //code block for a thread waiting on a condition variable
+			{
+			  IntStatus oldLevel = interrupt->SetLevel(IntOff); //disable interuppts
+			  if (trackCondLock == NULL)	
+			    trackCondLock = conditionLock;              //store the lock being used with the condition variable
+			  condWaitQueue->Append((void *)currentThread); //append the current thread to the condition thread wait queue
+			  conditionLock->Release();                     //release the lock
+			  currentThread->Sleep();                       //put the current thread to sleep
+			  conditionLock->Acquire();                     //acquire the lock once the thread is woken up
+			  (void) interrupt->SetLevel(oldLevel);	        //enable the interrupts
+			}
+
+
+		void Condition::Signal(Lock* conditionLock)  //code block to signal a thread waiting on a condition variable
+			{    
+			  IntStatus oldLevel = interrupt->SetLevel(IntOff);  //disable interrupts
+			  Thread *thread;
+			  if (condWaitQueue->IsEmpty())
+			    (void) interrupt->SetLevel(oldLevel);	     //if no threads are waiting currently, restore interrupts and return
+			  else {		
+			    if (conditionLock != NULL && conditionLock->isHeldByCurrentThread()) { //if a thread is waiting, check if it is the lock owner
+			      if (conditionLock != trackCondLock) {
+				printf ("\n The singnaler's lock doesn't match the waiter's lock \n"); //restore interrupts and return if the signaller..
+													// .. thread is not the lock owner
+			      }
+			      else {                 
+				thread = (Thread *)condWaitQueue->Remove(); //remove a waiting thread from the condition variable wait queue               
+				if (thread != NULL)
+				  scheduler->ReadyToRun(thread);	    //put the thread in the ready queue          
+				if (condWaitQueue->IsEmpty()) {                    
+				  trackCondLock = NULL;                     //clear the lock ownership if therea re no more waiters
+				}
+			      } 
+			    }
+			  }
+			  (void) interrupt->SetLevel(oldLevel);             //enable interrupts
+			}
+
+
+		void Condition::Broadcast(Lock* conditionLock)  //code block to signal all the threads waiting
+			{
+			  while (!(condWaitQueue->IsEmpty())) {	         
+			    Signal(conditionLock);		        //keep signalling until the condition variable wait queue becomes empty
+				}
+			}
+
+		All the above functions were modified in the synch.cc file
+
+
+	+PART II
+
+		* FILES MODIFIED
+			threadtest.cc
+			main.cc
+			synch.cc
+			synch.h
+
+		* FILES ADDED
+			No new files have been added.
+
+		* DATA STRUCTURES ADDED
+			Lock *individiualOperatorLock[Nop]
+			int phoneStatus[NOOFPHONES]
+			Condition *waitForCaller[Nop]
+			Condition *waitForOperatorVerification[Nop]
+			int operatorStatus[Nop]
+			int moneyReserve[Nop]
+			int repositoryID[Nop]
+			int repositoryMoney[Nop]
+			int authenticationMechanism[Nop]
+		
+			All these have been added to threadtest.cc
+
+
+		* DATA STRUCTURES MODIFIED
+			No data structures have been modified.
+		
+		* FUNCTIONS ADDED
+			void President(int); (in threadtest.cc)
+			void Senator(int); (in threadtest.cc)
+			void Visitor(int); (in threadtest.cc)
+			void Operator(int); (in threadtest.cc)
+			void Summary(int); (in threadtest.cc)
+			bool Condition::isSomebodyWaiting() (in synch.cc and defined in synch.h)
+			{				        	 //code block to check if there is any thread waiting in the condition variable wait queue       
+				  return !(condWaitQueue->IsEmpty()); //return 1 if there is a thread waiting, else return 0
+			}
+
+		* FUNCTIONS MODIFIED
+			void ThreadTest(char *)
+
+
+
+  V. Testing:
+  -------------
+
+     + PART I
+	
+	+ How to Test
+		
+		Run nachos -T to get the output of the first part.
+
+	+ Test Output
+		
+		* Test 1: To show that a thread trying to release a lock it does not hold does not work
+			
+			Output:
+			..
+			t1_t3: Trying to release Lock t1_l1
+
+			The current Thread is not the owner of the lock 't1_l1' 
+ 			..
+
+			So it can be seen that when the thread t1_t3 is trying to release t1_l1 which it doesn't hold, a message 
+			is displayed that 'the current thread is not the owner of the lock'. Similar is the output for t1
+
+
+		* Test 2 : To show that Signals are not stored -- a Signal with no thread waiting is ignored
+
+			Output:
+			..
+
+			t2_t1: Lock t2_l1 acquired, signalling t2_c1
+			t2_t1: Releasing Lock t2_l1
+			t2_t2: Lock t2_l1 acquired, waiting on t2_c1
+			..
+
+			t2_t1 first acquires the lock t2_l1. By the time it signals using t2_c1, no body is waiting in t2_c1 since t2_t2 
+			acquires the lock only after t2_t1 releases it at the end. So t2_t2 shouldn't complete which is the case from the above output.
+
+		* Test 3.  To show that Signal only wakes 1 thread
+			Output:
+			..
+			t3_waiter0: Lock t3_l1 acquired, waiting on t3_c1
+			t3_waiter1: Lock t3_l1 acquired, waiting on t3_c1
+			t3_waiter2: Lock t3_l1 acquired, waiting on t3_c1
+			t3_waiter3: Lock t3_l1 acquired, waiting on t3_c1
+			t3_waiter4: Lock t3_l1 acquired, waiting on t3_c1
+			t3_signaller: Lock t3_l1 acquired, signalling t3_c1
+			t3_signaller: Releasing t3_l1
+			t3_waiter0: freed from t3_c1
+			..
+
+			So the condition variable t3_c1 has t3_waiter0, t3_waiter1, t3_waiter3, t3_waiter4 in its wait queue. t3_c1.Signal(&t3_l1) signals 
+			only the first one namely t3_waiter0 which is seen to be run at the end. Other threads never run. So signal wakes only one thread (the first one)
+
+
+		* Test 4.  To show that Broadcast wakes all waiting threads
+			Output:
+			..
+			t4_waiter0: Lock t4_l1 acquired, waiting on t4_c1
+			t4_waiter1: Lock t4_l1 acquired, waiting on t4_c1
+			t4_waiter2: Lock t4_l1 acquired, waiting on t4_c1
+			t4_waiter3: Lock t4_l1 acquired, waiting on t4_c1
+			t4_waiter4: Lock t4_l1 acquired, waiting on t4_c1
+			t4_signaller: Lock t4_l1 acquired, broadcasting t4_c1
+			t4_signaller: Releasing t4_l1
+			t4_waiter0: freed from t4_c1
+			t4_waiter1: freed from t4_c1
+			t4_waiter2: freed from t4_c1
+			t4_waiter3: freed from t4_c1
+			t4_waiter4: freed from t4_c1
+			..
+
+			t4_waiter0 upto t4_waiter4 wait on the wait queue of condition variable t4_c1 with lock t4_l1. Now when t4_c1.Broadcast(&t4_l1) 
+			is executed, it wakes up all the waiters in the wait queue of t4_c1 which can be seen from the output above.Note the order of 
+			execution is same as the order in which they were appended to the queue.
+
+		* Test 5.  To show that Signalling a thread waiting under one lock while holding another is a Fatal error
+			Output : 
+			..
+			t5_t1: Lock t5_l1 acquired, waiting on t5_c1
+			t5_t2: Lock t5_l2 acquired, signalling t5_c1
+			 The singnaler's lock doesn't match the waiter's lock 
+			..
+
+			Thread t5_t1 waits on t5_c1 using lock t5_l1 and thread t5_t2 signals the waiting thread in condition variable t5_c1 
+			but with lock t2_l2 which is different from the lock t5_l1 with which t5_t1 is waiting. So the output "The signaler's 
+			lock doesn't match the waiter's lock" is obtained.
+
+
+   +    Part 2
+
+        + How To Test
+          -----------
+               
+            - The following instructions are given from the command prompt:
+                 
+                  * gmake
+                  * nachos -P2 -rs xxxx
+          
+                   xxxx is replaced with a random integer to make nachos run with pre-emptive scheduling.
+
+            - The user is given an option to choose between System Test Cases and Repeatable Test Cases.
+
+            - In the systems test case,a desired number of all types of threads in the system run. We will get a complete view of how the whole system functions.
+
+            - For the repeatable tests the user is provided with a menu of test cases from which he can choose.
+              The following tests are listed:
+
+                  1.  All the phones in the system are initially busy.
+                  2.  All the operators are busy.
+                  3.  The Sequence of entry is: President-Senator-Visitor
+                  4.  The Sequence of entry is: President-Visitor-Senator   
+                  5.  The Sequence of entry is: Senator-President-Visitor
+                  6.  The Sequence of entry is: Senator-Visitor-President
+                  7.  The Sequence of entry is: Visitor-President-Senator
+                  8.  The Sequence of entry is: Visitor-Senator-President
+                  9.  The Sequence of entry is: President-Senator only
+                 10.  The Sequence of entry is: Senator-President only
+                 11.  The Sequence of entry is: President-Visitor only
+                 12.  The Sequence of entry is: VisitorPresident only
+                 13.  The Sequence of entry is: Senator-Visitor only
+                 14.  The Sequence of entry is: Visitor-Senator only
+                 15.  The Sequence of entry is: President only
+                 16.  The Sequence of entry is: Senator only
+                 17.  The Sequence of entry is: Visitor only
+
+          
+ 
+      +   Test Cases in Detail:
+          ---------------------
+
+          0) Systems Test: 
+           
+              *  Set Up & Purpose: 
+                               
+                   All the threads- President, Visitors, Senators and Operators are included  in the test. The user inputs the desired number of each thread.
+                   All the threads are forked into the system. All phones and operators are initially free. The threads need to follow the rules of the system.
+                   We get a holistic view of how the various threads interact and access shared data & resources.
+
+              *  Expected Output:
+                 
+                   The President should get first priority while accessing the phone followed by the senators and then the visitors. There should be no race conditions or
+                   deadlocks in the system. Each phone must be used by only 1 thread at a time based on priority while others should wait in a queue.
+                   The operator thread must verify the details by the visitor and senators before allowing them to make a call. Nachos must exit only after all the
+                   threads have finished executing
+
+          1) Repeatable Test 1: (All phones are initially Busy)
+
+              *  Set up & Purpose:
+      
+                   All the threads- President, Visitors, Senators and Operators are included  in the test. The user inputs the desired number of each thread.
+                   The status of each phone is initially set to Busy.  All the threads are forked into the system.  The threads need to follow the rules of the system.
+                   
+              *  Expected output:
+     
+                   As all phones are initially busy, all the threads will be in the waiting queue to acquire the phone lock. As no threads will be in the ready 
+ 	           queue, nachos will exit and no threads will get a chance to acquire a lock.
+
+	  2) Repeatable Test 2: (All Operators are Busy)      
+
+              *  Set up & Purpose:
+      
+                   All the threads- President, Visitors, Senators and Operators are included  in the test. The user inputs the desired number of each thread.
+                   The status of each operator is initially set to Busy.  All the threads are forked into the system.  The threads need to follow the rules of the system.
+                   
+              *  Expected output:
+     
+                   As all operators are initially busy, the threads will be acquire the phone lock in the given priority sequence and wait in the queue to acquire the
+                   operator lock. Once the operators become free they will start signalling the threads in the order of presence in the queue. After all the threads have
+		   finished executing Nachos will stop.
+
+	  3) Repeatable Test: Tests 3-14 (Sequence of entry)
+
+	      *  Set Up & Purpose:
+
+		   In these test cases, the threads are forked in the order specified. The sequence can be chosen by the user from the menu. The user then can enter the 
+		   number of threads of each type he desires. All the phones and operator status is initially free.
+
+	      *  Expected Output:
+
+                   The threads forked initially get the available phones. The status of the phones is changed to busy. Once, this initial phase is completed
+		 the allocation of phones depends on the priority schemes we are enforcing. Once the president enters the waiting queue, no more phones should
+		be allocated to anyone. But, the president must wait until all callers have finished. When the president is talking on the phone, no other user calls.
+		But, after the president finishes, other threads wake up and start implementing. The president gets priority over senators and visitors. Senators are
+		preferred over visitors. Operators perform validation for visitors and senators. The visitors pay the respective opeartor they deal with. Once, the call is
+		completed, the signal is given to the next person in line. We confirm the test with the end statistics which matches the expected result.
+
+ 	  4) Repeatable Test: Tests 15-17 (Individual thread types)
+
+	      * Set Up & Purpose:
+
+		   In these threads only the specified thread type is forked.The user can enter the number of threads he wants. All the phones and operators are 
+			initially busy. The test is performed to see the interaction of each thread type with the system. 
+	      
+	      * Expected output:
+
+		Since all callers are of the same type there is no priority issues here. In this case we can verify whether, the individual threads are going through with
+		their full cycle of implementation. 
+
+
+ VI. Discussion
+ --------------
+
+ + Experiment Expectation
+
+   Part 1:
+
+	
+        We expect to design a system of locks and condition variables.
+	Disabling interrupts should suffice to provide atomicity. The functions associated with the Lock class- Acquire & Release,
+	and the Condition class- Wait, Signaland Broadcast work correctly. The system should respond to critical issues concerning 
+	locks and condition variables. A thread not holding a lock should not release it. If there is no thread in the waiting queue, 
+	the signal should not be stored for a later thread. The signal function should wake only 1 thread. The broadcast signal wakes up 
+	all the threads un the wait queue.
+
+
+   Part 2:
+
+        We expect the Senate Pay Phone simulation to work in sync with system developed in part 1. By forking we should create 
+	multiple instances of the same type of thread. The President, Senators and several visitors should be able to use the 
+	phone one at a time only after acquiring the phone lock.
+        Calls from these phones should be directed through the operators after verification. The user can input a desired number of senators,
+        operators and visitors.        
+	The priority schemes should be followed while the users try to acquire the phone:
+        The President should get the highest priority, ahead of senators and visitors.When the president is using the phone, no 
+	other phone should be in use and the threads should be in the wait queue.
+        However the president should not preempt other callers before they complete their calls. President makes a total of 5 calls.
+        Senators are preferred over the visitors. They make a total of 10 calls each.
+        Visitors should atleast execute once all the threads are done.
+
+       
+        The visitor has to pay $1 to the operator he/she is assigned inorder to proceed making a call. The senators have to provide their ID to make a call. Thus, the operator
+        should take care of the verification mechanism and grant access to the users to make calls. There is no priority scheme to acquire the operator.
+       
+	The simulation results should satisfy the exhaustive test cases to check for the correctness of the system.
+
+
+  +  Experiment  Result:
+
+     Part 1:
+
+	The threads are interacting well in the system of locks and condition variables. Only 1 thread acquires a lock at a given time. 
+	This lock can only be released by this thread. Only 1 thread is woken up by the signal function while all waiting threads are 
+	put in the ready queue by the broadcast function. No deadlocks or race conditions occur.
+
+     Part 2:
+
+	The President, Senators and several visitors  use the phone one at a time only after acquiring the phone lock.Remaining threads 
+	wait in a queue for the lock. They are woken only after a previous user signals them.
+        Calls from these phones are directed through the operators after verification. The visitor makes a call only if he pays. Similarly 
+	the senator can make a call only if is ID is validated.
+        The priority schemes are followed while allocating the phone:
+        The President gets the highest priority, ahead of senators and visitors.When the president is using the phone, no other phone is 
+	in use and the threads are  in the wait queue.
+        However the president does not preempt other callers before they complete their calls. President makes a total of 5 calls.
+        Senators are preferred over the visitors. They make a total of 10 calls each.
+        Visitors finish  executing atleast after all the threads are done.
+
+   + Explanation
+
+	Part 1:
+
+	      The experiment results match the expected result. Therefore we can conclude that the system of threads, locks and condition 
+	      variables is successfully implemented.
+
+	Part 2:
+
+	      The Senate Pay Phone simulation  meets all the necessary specifications. This can be verified by the results of the test cases. 
+
+
+VII. Miscellaneous
+------------------
+
+     + In order to achieve a real life scenario, the system has been designed such that the visitor pays $1 with a probability of P=0.8. This has been implementd
+       as follows:
+						
+									((rand()%100)>80)?0:1
+
+       rand() generates a random number between 0 and 32767. Taking a mod of 100 on this generates a value between 0 and 99. If this value is less than 80, then
+       we say that the visitor has paid $1, otherwise he/she hasn't.
+
+     + The number of threads of visitors or senators is limited to a maximum of 200, as a very large value will cause the nachos system to run out of memory and the
+       execution fails
+
+     + Since the number of phones is initialized to 20, the number of visitors if less than 20 will cause all the visitors to run before president or senator, if
+       forked first. This calls for a large number of visitors in order to check if the visitors wait for the president/senator to acquire the phone if threads of
+       all the 3 categoreis are waiting to acquire a phone.

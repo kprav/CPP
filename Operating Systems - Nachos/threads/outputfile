@@ -1,0 +1,214 @@
+
+
+
+ ~~~~~~~~~~~~~Choose Type of Test~~~~~~~~~~~~~ 
+ 1. System Tests/Stress Tests 
+ 2. Repeatable Tests/Controlled Tests 
+
+ Enter your choice : 
+
+ Enter the number of Operators : 
+ Enter the number of Senators  : 
+ Enter the number of Visitors  : President 	  1 		 1/9 units 	 1 		 1 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 2/9 units 	 1 		 1 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 3/9 units 	 1 		 1 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 4/9 units 	 1 		 1 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 5/9 units 	 1 		 1 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 6/9 units 	 1 		 1 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 7/9 units 	 1 		 1 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 8/9 units 	 1 		 1 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 9/9 units 	 1 		 1 	    ACCEPTED       NOTAPPLICABLE 
+Senator101 	  UNAVAILABLE 	 0/0 units 	 1 		 1 	    DENIED 	   ID is less than 1000 
+Senator1002 	  2 		 1/2 units 	 2 		 1 	    ACCEPTED 	   ID is greater than 1000 
+Senator103 	  UNAVAILABLE 	 0/0 units 	 3 		 1 	    DENIED 	   ID is less than 1000 
+Senator1002 	  2 		 2/2 units 	 2 		 1 	    ACCEPTED 	   ID is greater than 1000 
+Senator1004 	  4 		 1/2 units 	 1 		 1 	    ACCEPTED 	   ID is greater than 1000 
+Senator105 	  UNAVAILABLE 	 0/0 units 	 2 		 1 	    DENIED 	   ID is less than 1000 
+Senator1006 	  6 		 1/3 units 	 3 		 1 	    ACCEPTED 	   ID is greater than 1000 
+Senator1004 	  4 		 2/2 units 	 1 		 1 	    ACCEPTED 	   ID is greater than 1000 
+Senator1006 	  6 		 2/3 units 	 3 		 1 	    ACCEPTED 	   ID is greater than 1000 
+Senator107 	  UNAVAILABLE 	 0/0 units 	 1 		 1 	    DENIED 	   ID is less than 1000 
+Senator1008 	  8 		 1/6 units 	 2 		 1 	    ACCEPTED 	   ID is greater than 1000 
+Senator1006 	  6 		 3/3 units 	 3 		 1 	    ACCEPTED 	   ID is greater than 1000 
+Senator109 	  UNAVAILABLE 	 0/0 units 	 3 		 1 	    DENIED 	   ID is less than 1000 
+Senator1008 	  8 		 2/6 units 	 2 		 1 	    ACCEPTED 	   ID is greater than 1000 
+Senator1010 	  10 		 1/5 units 	 1 		 1 	    ACCEPTED 	   ID is greater than 1000 
+Senator1008 	  8 		 3/6 units 	 2 		 1 	    ACCEPTED 	   ID is greater than 1000 
+Visitor1 	  11 		 1/2 units 	 2 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Visitor2 	  UNAVAILABLE 	 0/0 units 	 3 	   NOTAPPLICABLE    DENIED 	   Money paid is $0 
+Senator1010 	  10 		 2/5 units 	 1 		 1 	    ACCEPTED 	   ID is greater than 1000 
+Senator1008 	  8 		 4/6 units 	 2 		 1 	    ACCEPTED 	   ID is greater than 1000 
+Visitor1 	  11 		 2/2 units 	 2 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Senator1010 	  10 		 3/5 units 	 1 		 1 	    ACCEPTED 	   ID is greater than 1000 
+Visitor3 	  13 		 1/2 units 	 1 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Senator1008 	  8 		 5/6 units 	 2 		 1 	    ACCEPTED 	   ID is greater than 1000 
+Visitor4 	  14 		 1/1 units 	 2 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Visitor5 	  15 		 1/1 units 	 3 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Senator1010 	  10 		 4/5 units 	 1 		 1 	    ACCEPTED 	   ID is greater than 1000 
+Visitor3 	  13 		 2/2 units 	 1 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Senator1008 	  8 		 6/6 units 	 2 		 1 	    ACCEPTED 	   ID is greater than 1000 
+Senator1010 	  10 		 5/5 units 	 1 		 1 	    ACCEPTED 	   ID is greater than 1000 
+Visitor6 	  16 		 1/5 units 	 1 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Visitor7 	  17 		 1/2 units 	 2 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Visitor8 	  18 		 1/5 units 	 3 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Visitor6 	  16 		 2/5 units 	 1 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Visitor7 	  17 		 2/2 units 	 2 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Visitor8 	  18 		 2/5 units 	 3 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Visitor6 	  16 		 3/5 units 	 1 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Visitor9 	  19 		 1/5 units 	 1 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Visitor10 	  20 		 1/2 units 	 2 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Visitor8 	  18 		 3/5 units 	 3 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Visitor6 	  16 		 4/5 units 	 1 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Visitor9 	  19 		 2/5 units 	 1 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Visitor10 	  20 		 2/2 units 	 2 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Visitor8 	  18 		 4/5 units 	 3 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Visitor6 	  16 		 5/5 units 	 1 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Visitor9 	  19 		 3/5 units 	 1 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Visitor8 	  18 		 5/5 units 	 3 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Visitor9 	  19 		 4/5 units 	 1 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+Visitor9 	  19 		 5/5 units 	 1 	   NOTAPPLICABLE    ACCEPTED 	   Money paid is $1 
+President 	  1 		 1/13 units 	 1 		 2 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 2/13 units 	 1 		 2 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 3/13 units 	 1 		 2 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 4/13 units 	 1 		 2 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 5/13 units 	 1 		 2 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 6/13 units 	 1 		 2 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 7/13 units 	 1 		 2 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 8/13 units 	 1 		 2 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 9/13 units 	 1 		 2 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 10/13 units 	 1 		 2 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 11/13 units 	 1 		 2 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 12/13 units 	 1 		 2 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 13/13 units 	 1 		 2 	    ACCEPTED       NOTAPPLICABLE 
+Senator101 	  UNAVAILABLE 	 0/0 units 	 1 		 2 	    DENIED 	   ID is less than 1000 
+Senator1002 	  2 		 1/8 units 	 2 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator103 	  UNAVAILABLE 	 0/0 units 	 3 		 2 	    DENIED 	   ID is less than 1000 
+Senator1002 	  2 		 2/8 units 	 2 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator1006 	  4 		 1/8 units 	 1 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator1002 	  2 		 3/8 units 	 2 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator109 	  UNAVAILABLE 	 0/0 units 	 2 		 2 	    DENIED 	   ID is less than 1000 
+Senator107 	  UNAVAILABLE 	 0/0 units 	 3 		 2 	    DENIED 	   ID is less than 1000 
+Senator1006 	  4 		 2/8 units 	 1 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator1002 	  2 		 4/8 units 	 2 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator1006 	  4 		 3/8 units 	 1 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator105 	  UNAVAILABLE 	 0/0 units 	 1 		 2 	    DENIED 	   ID is less than 1000 
+Senator1002 	  2 		 5/8 units 	 2 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator1004 	  8 		 1/6 units 	 2 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator1008 	  9 		 1/3 units 	 3 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator1006 	  4 		 4/8 units 	 1 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator1002 	  2 		 6/8 units 	 2 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator1004 	  8 		 2/6 units 	 2 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator103 	  UNAVAILABLE 	 0/0 units 	 1 		 3 	    DENIED 	   ID is less than 1000 
+Senator1008 	  9 		 2/3 units 	 3 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator1006 	  4 		 5/8 units 	 1 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator1010 	  10 		 1/1 units 	 2 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator1002 	  2 		 7/8 units 	 2 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator1004 	  8 		 3/6 units 	 2 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator1008 	  9 		 3/3 units 	 3 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator1006 	  4 		 6/8 units 	 1 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator1002 	  2 		 8/8 units 	 2 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator1004 	  8 		 4/6 units 	 2 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator1006 	  4 		 7/8 units 	 1 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator1004 	  8 		 5/6 units 	 2 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator1006 	  4 		 8/8 units 	 1 		 2 	    ACCEPTED 	   ID is greater than 1000 
+Senator1004 	  8 		 6/6 units 	 2 		 2 	    ACCEPTED 	   ID is greater than 1000 
+President 	  1 		 1/3 units 	 1 		 3 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 2/3 units 	 1 		 3 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 3/3 units 	 1 		 3 	    ACCEPTED       NOTAPPLICABLE 
+Senator109 	  UNAVAILABLE 	 0/0 units 	 1 		 3 	    DENIED 	   ID is less than 1000 
+Senator101 	  UNAVAILABLE 	 0/0 units 	 2 		 3 	    DENIED 	   ID is less than 1000 
+Senator107 	  UNAVAILABLE 	 0/0 units 	 3 		 3 	    DENIED 	   ID is less than 1000 
+Senator105 	  UNAVAILABLE 	 0/0 units 	 1 		 3 	    DENIED 	   ID is less than 1000 
+Senator1010 	  5 		 1/7 units 	 2 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1002 	  6 		 1/2 units 	 3 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1010 	  5 		 2/7 units 	 2 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1002 	  6 		 2/2 units 	 3 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1006 	  7 		 1/9 units 	 1 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1010 	  5 		 3/7 units 	 2 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1008 	  8 		 1/10 units 	 2 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1004 	  9 		 1/4 units 	 3 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1006 	  7 		 2/9 units 	 1 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1010 	  5 		 4/7 units 	 2 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1008 	  8 		 2/10 units 	 2 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1004 	  9 		 2/4 units 	 3 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1006 	  7 		 3/9 units 	 1 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1010 	  5 		 5/7 units 	 2 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1008 	  8 		 3/10 units 	 2 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1004 	  9 		 3/4 units 	 3 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1006 	  7 		 4/9 units 	 1 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1010 	  5 		 6/7 units 	 2 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1008 	  8 		 4/10 units 	 2 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1004 	  9 		 4/4 units 	 3 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1006 	  7 		 5/9 units 	 1 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1010 	  5 		 7/7 units 	 2 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1008 	  8 		 5/10 units 	 2 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1006 	  7 		 6/9 units 	 1 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1008 	  8 		 6/10 units 	 2 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1006 	  7 		 7/9 units 	 1 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1008 	  8 		 7/10 units 	 2 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1006 	  7 		 8/9 units 	 1 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1008 	  8 		 8/10 units 	 2 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1006 	  7 		 9/9 units 	 1 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1008 	  8 		 9/10 units 	 2 		 3 	    ACCEPTED 	   ID is greater than 1000 
+Senator1008 	  8 		 10/10 units 	 2 		 3 	    ACCEPTED 	   ID is greater than 1000 
+President 	  1 		 1/19 units 	 1 		 4 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 2/19 units 	 1 		 4 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 3/19 units 	 1 		 4 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 4/19 units 	 1 		 4 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 5/19 units 	 1 		 4 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 6/19 units 	 1 		 4 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 7/19 units 	 1 		 4 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 8/19 units 	 1 		 4 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 9/19 units 	 1 		 4 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 10/19 units 	 1 		 4 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 11/19 units 	 1 		 4 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 12/19 units 	 1 		 4 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 13/19 units 	 1 		 4 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 14/19 units 	 1 		 4 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 15/19 units 	 1 		 4 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 16/19 units 	 1 		 4 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 17/19 units 	 1 		 4 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 18/19 units 	 1 		 4 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 19/19 units 	 1 		 4 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 1/17 units 	 1 		 5 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 2/17 units 	 1 		 5 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 3/17 units 	 1 		 5 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 4/17 units 	 1 		 5 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 5/17 units 	 1 		 5 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 6/17 units 	 1 		 5 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 7/17 units 	 1 		 5 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 8/17 units 	 1 		 5 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 9/17 units 	 1 		 5 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 10/17 units 	 1 		 5 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 11/17 units 	 1 		 5 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 12/17 units 	 1 		 5 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 13/17 units 	 1 		 5 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 14/17 units 	 1 		 5 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 15/17 units 	 1 		 5 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 16/17 units 	 1 		 5 	    ACCEPTED       NOTAPPLICABLE 
+President 	  1 		 17/17 units 	 1 		 5 	    ACCEPTED       NOTAPPLICABLE 
+
+
+Summary
+~~~~~~~
+Total number of Visitors : 10
+Number of Visitors Accepted : 9
+Number of Visitors Denied : 1
+Money collected by Operator 1 is 3
+Money collected by Operator 2 is 4
+Money collected by Operator 3 is 2
+Total money collected by all operators is 9
+It can be seen that number of visitors accepted is equal to the total money collected by all the operators
+
+
+No threads ready or runnable, and no pending interrupts.
+Assuming the program completed.
+Machine halting!
+
+Ticks: total 33440, idle 0, system 33440, user 0
+Disk I/O: reads 0, writes 0
+Console I/O: reads 0, writes 0
+Paging: faults 0
+Network I/O: packets received 0, sent 0
+
+Cleaning up...

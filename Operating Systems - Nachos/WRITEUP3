@@ -1,0 +1,970 @@
+   Title: Writeup for Project 3, Fall 2008
+
+   Date: 11/02/08
+
+   I. REQUIREMENTS:
+   ================
+
+	Part 1 : Implementation of TLB
+	-------------------------------
+
+	In this part of the assignment we are implementing a software-managed translation lookaside buffer (TLB) as a cache for page tables to 
+	speed virtual page translation over a large address space.
+	
+	Page tables were used to perform address translation. But,as the page table grew for each process, searching through the entries became 
+	expensive.Multi-level page table seems to alleviate this issue and reduced the number of unused page table entries. However, multiple 
+	accesses to memory to obtain the physical address reduced throughput.Modern operating system provides an alternative with hardware assistance 
+	called Translation Lookaside Buffer (TLB). By maintaining a translation cache, address translation can be performed quickly given that the 
+	required entry resides in the cache. If no cache entry for the virtual page is available then, a trap is called to the OS. OS finds the
+	translation from the page tables and loads it into the TLB. It then restarts system.
+
+	Translation Lookaside Buffer (TLB)
+
+	-	Nachos must use TLB in the place of page table
+	-	A single TLB must be shared by all processes
+	-	The TLB must function correctly on context switching.
+	-	To maintain and update TLB to ensure legitimate translation entries
+	-	Use PageFault Exception to handle ¡TLB miss¢.
+	-	The knowledge of the modified page in the TLB needs to be propagated to IPT before it can be replaced
+	-	Selection of TLB entry is to follow FIFO scheme
+	-	Programs should run to completion regardless of number of pagefault. 
+
+
+	Part 2 :Virtual Memory
+	----------------------
+	In  this part of the assignment we are implementing  virtual memory by using main memory as a cache for the disk. Virtual memory allows
+	programs that are larger than physical memory to be executed. This memory abstraction is accomplished keeping only some parts of the program
+	in main memory at a time. When they are not needed, they can be swapped out to disk, and can then be brought back into memory later when 
+	required by CPU. This relieves the fear of memory exhaustion.
+
+	For Implementing Virtual Memory
+
+	-	Need software routines to move pages between disk and memory.
+	-	An Inverted Page Table (IPT) must be constructed, which indexes on physical memory and provide physical to virtual memory translation.
+	-	OS must search IPT after a TLB-miss
+	-	Memory page must be saved to a swap file, if it has been modified, before being replaced.A single swap file must be used for all processes
+		and threads and it can be sored in the nachos file system
+	-	Nachos must support two page replacement schemes: FIFO and random
+	-	We need to keep track of each virtul page whether it is in memory, original executable or swap file.
+	-	User programs that are larger than main memory should also run to completion
+
+ 
+	Part 3 :Remote Procedure Calls
+	------------------------------
+
+	Computers can share resources when they are connected to a network. The most common topology for resource sharing is client-server. 
+	Server provides services to clients, who make service requests. One of the most fundamental methods of making such request is called 
+	Remote Procedure Calls (RPC). RPC abstracts the underlying remote service request process from user programs as if the services are provided locally.   
+
+	Remote Procedure Call (RPC)
+
+	-	To implement a lock and condition variable server instance that can provide services to multiple client instances
+	-	Server and clients are to communicate by passing messages over a simulated network.
+	-	The entire RPC process should be hidden from user such that the ways lock and condition variable system calls are used in user program stay intact. 
+
+	In this part of the project we are implementing Remote Procedure Calls (RPCs) relevant to Locks and Condition variables. 
+	Hence our requirement is to introduce those system calls that will help in basic lock functionalities like creating, 
+	acquiring etc and some basic condition variable functionalities like waiting, signaling etc. 
+	Hence we have implemented the following basic RPCs:
+		
+		+ CreateLock
+		+ AcquireLock
+		+ ReleaseLock
+		+ DeleteLock
+		+ CreateCondition
+		+ WaitCV
+		+ SignalCV
+		+ BroadcastCV
+		+ DeleteCondition
+
+	That makes a list of 9 system calls to be implemented. Since we have implemented the above system calls earlier for running
+	userprogs, we have used the same and used flags to selectively compile the part of the code that would do the networking calls
+	instead of actual system calls. We call these as Netcalls distinct from System Calls (Syscalls).
+
+	Going a step backwards, our basic requirement is that there are a set of clients that are controlled in a centralized manner
+	by a server. Thus if there are n clients then we require to run (n + 1) nachos instances (for n clients and 1 server). These
+	clients make the Netcalls like CreateLock, AcquireLock etc and the server which receives these commands parses the requests
+	and sends acknowledgements in a controlled manner as per the request. For example, if a client issues a CreateLock Netcall,
+	the server makes a note of it and then sends a numeric identifier for the lock. If a different client issues a CreateLock
+	Netcall but with the same name of the lock, the server gives the same numeric identifier (which was created earlier)
+	to this client. Thus two of the clients now have access to the same lock. When one of the clients makes an AcquireLock Netcall, 
+	followed by which another makes the same AcquireLock Netcall with the same lock, the server must send acknowledgement to the
+	first request but delay the second request so that the second client now waits for the lock. Similar must be the task of the
+	server for the condition Netcalls. 
+		
+	+ Server
+			
+		This is the program that listens to commands and executes the commands. By execution we mean that the server parses
+		the commands, figures out what to do, updates its variables etc, and then sends relevant acknowledgement at the 
+		appropriate time.
+
+	+ Server Stub
+		
+		This is the piece of code that handles the networking for the server. The server has to listens to and sends to this
+		program without bothering about the real location of the clients. 
+		Note : Our assumption below clearly states that the server and the server stub are the same - one program that manages
+		networking and parses commands.
+
+	+ Clients
+			
+		These are user programs that issue commands. They have no idea about the networking involved, where the server is etc.
+		These commands are basically Netcalls, similar to the Syscalls,  which are handled by the client stub.
+
+	+ Client Stub
+
+		This program takes care of the networking for the client. The Netcalls that it receives from the clients are basically
+		converted into appropriate packets that the server can consume. Once it gets the reply from the server, it sends the reply
+		back to the client from where the Netcall originated.
+
+	This concludes our requirement analysis.
+
+
+
+   II.ASSUMPTIONS:
+   ================
+
+	Part 1 : Translation Look-aside Buffer (TLB)
+	--------------------------------------------
+	
+		+ No assumptions made in this part
+
+	Part 2 : Virtual Memory
+	-----------------------
+	
+		+ The swap file is large enough to accomodate all the pages during execution.
+ 
+	Part 3 : Remote Procedure Calls
+	-------------------------------
+		
+		+ We assume that the clients are single-threaded.
+		+ We assume that the server always has a machine ID 0
+		+ All the clients stubs send their netcalls to the MailBox 0 and they listen back for acknowledgements at MailBox 1.
+		  Hence the server listens at MailBox 0 always for commands.
+		+ The server program and the server stub are the same. 
+		+ The server is infinitely ON. It never terminates [unless we kill the process].
+		+ The network reliability (as set in Nachos) is 1. So there are no packet losses and no data degradation.
+		+ If two clients request to create locks with the same name, the one that is received first is created first and that identifier
+		  is sent to the second client. Thus names are the unique identifiers for locks. The same is assumed for conditions
+
+
+
+   III. DESIGN:
+   ============
+
+
+	Part 1 : TLB
+	------------
+	TLB consists of four translation entry. TLB is now the first place of reference for CPU when performing address translation. Since TLB
+	does not contain all translation entries, occasionally, the entries will not be found, and this is called TLB miss.
+
+	In this part, we focus only on the operation of TLB, so we still keep the user program pre-loaded into main memory. At TLB miss, 
+	Nachos will raise a page fault exception and handled by the exception handler. In the exception handler first a search will take place in the 
+	Inverted Page Table (IPT). In the IPT physical pages are mapped to the virtual pages in memory. So we will first try to get the translation
+	from the IPT itself. If not available we will next search the pagetabe, and since all program pages are in the page table, it is guaranteed 
+	to find a valid translation. This is then copied to TLB, where the program instruction is restarted.The TLB is populated using a FIFO scheme. 
+	Before the selected TLB entry is removed, it is checked for the dirty bit. If the dirty bit is set (ie. physical page has been modified), 
+	this change must be propagated to IPT/Pagetable.
+
+	Since any processes may have the same virtual addresses, IPT must provide additional information of which process the memory pages belong to. 
+	IPT replaces a pagetable in term of address translation lookup upon TLB miss.   
+
+	Although, TLB is shared among processes, most operating system, during the context switch, simply invalidate all TLB entries. 
+	As a result, any process while using TLB can be sure that the translation entries are valid and do not belong to other processes. 
+	Upon the context switch, the following occurs:
+
+		1.  Starting from first entry, check dirty and valid bit. If both are set, accordingly update IPT/Pagetable.
+		2.  Reset valid, dirty, and used bits.
+     
+	The address space needs to be modified. The page table must be altered to accomodate the process id values. So we create a new page table class
+	-NewTranslationEntry. We set up the new page table. We then need to write code for copying the code and data segments into memory. 
+
+	The following is the steps for handling pagefault exception arising due to the TLB requirement.
+
+		1.  Check the validity of the virtual address to be sought.
+		2.  Calculate the virtual page number from the above virtual address
+		3.  Associate the processid of the current thread.
+		4.  Scan through the ipt to check if the virtual page is in memory
+		5.  If so, just go ahead and update the values in the TLB.
+		6.  If the vpn is not found in the IPT then,copy the deatils from the target page table into the ipt. 
+		7.  Copy the entry to the selected TLB entry.
+		8.  Mark the TLB entry as valid and reset use and dirty bit.
+		9.  Change the location of the page to main memory if it was fro executable or others.
+		10. Do not increment PCReg and instruction is restarted
+
+	
+
+	Part 2 : Virtual Memory
+	-----------------------
+	Now there are just 32 pages of physical (main) memory. Also, no preloading of pages into main memory is performed. So it is expected that whenever a new
+	page comes in, it is possible that it can find the main memory to be full. In order to accomodate that page into physical memory, it is required to remove an 
+	existing page in main memory in order to make room for the new page. This page thats is evicted is stored in the swap file and can be put back in to the main 
+	memory when it is required later.The evicting of pages from main memory can be done in two ways - Random Eviction policy and First Com First Out Evition (FIFO) 
+	policy. Random Eviction policy randomly pics a page and evicts it from the main memory whereas FIFO eviction policy evicts that page in main memory that came in 
+	first.This way, it appears as though there is more than 32 pages of main memory exists and programs having more than 32 pages run to completion, thus implementing 
+	the concept of virtual memory.
+
+	The implementation of virtual memory is done in a function called pageFaultHandler() in the file exception.cc. The algorithm is explained below: 
+
+		+ Obtain the virtual address of the page that caused a TLB miss from the BadVAddrReg register
+		+ The corresponding virtual page can be obtained by dividing by the page size
+		+ Now, we check if the page is available in the IPT
+		+ If available in the IPT, then the TLB is populated will the corresponding entries from the IPT
+		+ if the page is not available in the TLB, then it also means that the page is not present in the main memory.
+		+ So the IPT is populated with all the entries that correspond to this page from its page table.
+		+ Now, it is required to put this page in the main memory.
+		+ Here arises, 2 scenarios:
+			1. It is possible that the page is not there in main memory but the main memory is not full
+				* Find a slot in the main memory that is empty by using a bitmap for the IPT and set that to be the physical page of this virtual page in
+				  both its page table and the IPT
+				* The valid bit is explicitly set to TRUE
+				* Now, the code and data of the page is copied directly into the main memory if the virtual page is in the executable
+				* If the virtual page is not in the executable, then bzero the pages in main memory
+				* Then the location of the pages is changed to be in the main memory in both the page table and the IPT
+			2. It is possible that the page is not there in main memory and the main memory is also full
+				* It is now required to evict a page from main memory to make room for the new virtual page
+				* This can be done by using either of the two page replacement policies mentioned above.
+				* The Random page replacement policy evicts any random page from the main memory.
+				* The FIFO page replacement policy evicts that page from main memory that came into the main memory first. This logically is the page that has
+				  stayed in main memory for the longest time compared to other pages.
+				* Once a page is evicted, this position in main memory becomes the physical page for the new virtual page
+				* If the outgoing page is present in the TLB, its valid bit is set to FALSE and if its dirty bit is set to TRUE, it is popagated to the page
+				  table as well
+				* Note that any code that accesses the TLB is done only after the interrupts have been switched off.
+				* The page that is evicted from the main memory now needs to be saved in a swap file.
+				* A position in the swap file is found using a bitmap for the swap file and the page is written here
+				* The new page is now written into main memory and its page location is changed to be in the main memory in both the page table and the IPT
+				* Note that the new page that is coming into the main memory can be from the swap file itself. This is the page that was earlier evicted from
+				  main memory. In this case, it is required to clear its location in the swap file
+				* Now, the IPT is updated for the new page. The physical page for this page is also set in its page table.
+		+ Interrupts are turned off and the TLB is now updated for the new virtual page that was put in main memory
+		+ The current TLB slot is incremented in order to accomodate a new page. Note that when the currentTLBSlot is 3, and if it is incremented,it rolls back to zero.
+		+ Interrupts are turned back on
+
+
+	Part III : Remote Procedure Calls
+	---------------------------------
+
+	There are a number of design issues to handle. 
+
+		1. Packet Design:
+		----------------
+		
+			Networking in Nachos is done using the PostOffice class that allows us to send packets of data of size 64 bytes,
+			of which the first 24 bytes of the header belong to the packet and mailbox details. This leaves us with 40
+			bytes (equal to MaxMailSize) within which we are supposed to put our information and send it.
+			Based on our requirements, we have come up with the following packet definition (excluding the packet and mail
+			headers) : 
+			 _______________________________________________________________________________________________________
+			|		   |		    |		     |							|
+			| Netcall Type [2] | Parameter1 [2] | Parameter2 [2] |			Message [34]			|
+			|		   |		    |		     |							|
+  			 _______________________________________________________________________________________________________
+
+			 Note : (1) The bracketed terms specify the number of bytes for each of the field. 
+				(2) The packet structure is same for the two directions of communication - thus we can make use of one set 
+				    of functions for parsing the packets at both the client and the server stubs.
+
+			* NetCall Type
+				For the sake of simplicity and uniform coding, we make use of the same index of Syscall types as defined
+				in userprog/Syscall.h
+				They have been listed here:
+
+				SC_CreateLock	11
+				SC_DeleteLock	12
+				SC_CreateCondition	13
+				SC_DeleteCondition	14
+				SC_Acquire	15
+				SC_Release	16
+				SC_Wait		17
+				SC_Signal	18
+				SC_Broadcast	19
+	
+				Since these are inherently two digit numbers, we convert this to two characters and hence require 2 bytes 
+				for storing.
+
+			* Parameter1/Parameter2
+				These are generally the parameters to be passed to the server from the client or from the server to the client.
+				When nothing to pass, we set these values to 0. 
+				For example, upon a CreateLock Netcall the server returns the index of the lock through parameter1, whereas
+				the client stub sends the condition identifier and the lock identifier through parameters 1 and 2 to the server.
+
+			* Message
+				These are string messages helpful in debugging. If something goes wrong at the server, the error message 
+				can be sent to the client stub through this string.
+
+
+		2. Client Stub Design
+		---------------------
+			
+			Our client stub has to process the commands issued by the client, then frame the necessary packets and handle the 
+			networking part. It also has to wait for an acknoledgement. Clearly this has to be written in userprog/exception.cc
+			In order to preserve of the functionality of the origninal code which handles Syscalls (different from Netcalls), 
+			we have used conditional compilation directives in the form of flags. Since while compiling from the networks directory
+			we have access to the NETWORK flag, we use it to compile the Netcalls or Syscalls mutually exclusively.
+
+			So we will have something like
+
+			#ifndef NETWORK
+				
+				// code for Syscalls
+
+			#else
+
+				// code for Netcalls
+
+			#endif
+
+
+
+		3. Class Descriptions
+		---------------------
+			
+			* NetLocksClass
+				This class is used as the lock datatype by the server. It contains fields that specify whether a lock exists or not, 
+				whether or not the lock is busy, the name of the lock, owner of the lock etc. For multiple locks, we use an array
+				of these objects. Thus the members are: (all are public)
+				*	char name[40];
+				*	bool exists;
+				*	bool isBusy;
+				*	int ownerMachine;
+				*	List *replyQueue;
+				*	NetLocksClass();
+				replyQueue is a queue of reply messages (which are objects of the class replyType mentioned below)
+
+			* NetCondsClass
+				This class is similar to the NetLocksClass and is used to represent conditions. Again, an array of the objects of this
+				class is used for muliple conditions. Thus the members (all are public) are:
+				*	char name[40];
+				*	bool exists;
+				*	bool isBusy;
+				*	int lockID;
+				*	List *replyQueue;
+				*	int queueCount;
+				*	NetCondsClass();
+
+			* replyType
+				This class is used to store the replies that are to be sent back. For example, when a lock is not available to
+				be acquired, we	make an object of this class and append it to the waiting queue in that particular lock. 
+				When a ReleaseLock is called upon, we check whether there is some reply in the lock's waiting queue. If so, we make 
+				that machine which is destined for the reply to be the lock's owner and send an acknowledgement to that machine
+				using this reply. The members (public) are:
+				*	int inPktHdr_from;
+				*	int inMailHdr_from;
+				*	char ack[MaxMailSize];
+				*	int machineID;
+				*	replyType(int, int, char *);
+				The machineID is same as that of inPktHdr_from, a redundancy incorporated in order to make things clear.
+
+
+		4. Function Descriptions
+		------------------------
+
+			We make use of a number of functions for our Part 3. They are enlisted in the implementation section. A brief description
+			of the new functions are detailed below:
+
+			* void putData(char *str, int i)
+				This function splits the integer into two digits and stores their character equivalent inside str[0] and str[1]
+
+			* void formPacket(char *packet, int syscallType, int parameter1, int parameter2, char *msg)
+				This function forms the packet in the character array packet by taking in syscallType, paramete1, parameter2 and
+				msg. Thus this function calls putData thrice with syscallType strored at packet, parameter1 stored at packet+2,
+				parameter2 stored at packet + 4 and the message copied in the remaining array starting from packet + 6
+
+			* void getData(char *data, int *i)
+				This function takes a character array pointed by data, and puts the numeric equivalent of the first two characters
+				inside the pointer pointed by i. Hence the calling function then just has to use i. 
+				For example if data consited of characters like {'1','2','0','3'........} then getData(data,parameter1) (parameter1
+				is a pointer) will set *parameter1 = 12 (integer) and similary getData(data+2, parameter2) will set *parameter2 = 3
+
+			* void parsePacket(char *packet,int *syscallType, int *parameter1, int *parameter2, char *msg)
+				This function gets in packet and returns (via pointers) the syscallType, parameter1, parameter2 and a character
+				message. Hence you have to perform getData thrice with packet, packet + 2 and packet + 4. The remaining content
+				of the packet (pointed by packet + 6) is copied into msg using strcpy function.
+
+			Example:
+				formPacket(packet, 12, 1, 13, "Hello") stores the following in packet
+				"120113Hello\0       <total 40 bytes>  "
+
+				when this above thing is passed to parsePacket as
+				parsePacket(packet, syscallType, parameter1, parameter2, message) we get
+				syscallType = 12
+				parameter1 = 1
+				parameter2 = 2
+				message = "Hello\0     <total 34 bytes>  "
+
+
+			* StartServer()
+				This is the server function which takes nothing and returns nothing. It continuously loops using a while true loop.
+				The server listens to incoming messages at MailBox 0. Once it receives a packet, it then calls parsePacket function
+				which spilts up the message into components that can be handled by the server. It identifies the machine that has
+				requested the netcall and the reply-to mailbox. Knowing the netcall type the server calls the appropriate functions
+				(like AcquireLock_Netcall etc.) and it passes the appropriate parameter and/or the message, and the machine id and
+				reply back mailbox identifier. Each of these functions then handle the acknowledgement as required. 
+			
+			* void SendAck(int inPktHdr_from, int inMailHdr_from, char *ack_local)
+				This function is used to send acknowledgements - basically messages. Once the packet has been formed by some function,
+				it calls this function with the appropriate values of inPktHdr_from, inMailHdr_from and the acknowledgement. 
+				This function then creates the necessary headers and then calls the postoffice Send.
+
+			* void CreateLock_Netcall(char *name, int fromMachine, int fromBox)
+				This function handles the job of creating locks. It receives the name of the lock in variable name. 
+				It searches whether this lock already exists using the name. If not then it creates a new lock and sends the index
+				back to the client.
+				If the lock already exists, then the client receives the identifier of the existing lock
+
+			* void AcquireLock_Netcall(int lockID, int fromMachine, int fromBox)
+				This function checks whether the lock exists or not. If the lock exists, it sees whether the lock is busy or not.
+				If the lock is not busy, then it makes this client the owner of the lock and then sends an acknowledgement back 
+				to the client saying that it has acquired the lock (by setting parameter1 to 1 which indicates a success).
+				If the lock is already busy, then it frames a new reply and appends it to the lock's wait queue defined by replyQueue.
+
+			* void ReleaseLock_Netcall(int lockID, int fromMachine, int fromBox)
+				This does a couple of checkings - whether the lock exists or not, whether the lock is busy or not and whether
+				the client trying to release the lock is the owner of the lock. If something goes wrong it sends back a 0 to the client
+				with suitable error message. If everything is correct, then it sees whether there are some more clients waiting for
+				the lock (by checking the replyQueue). If there are none, then it just frees up the lock by making the isBusy field to 
+				be false and removing the owner information. If there is someone waiting, the lock's owner information is updated to
+				the waiter's id and then an acknowledgement is sent to the client which was waiting for the lock to be acquired 
+				saying that the lock has been acquired. 
+
+			* void DeleteLock_Netcall(int lockID, int fromMachine, int fromBox)
+				Again, this does a couple of checkings - whether the lock is exists and whether it is busy. Then it deletes the lock
+				by setting the exists bit to FALSE and then sending appropriate acknowledgement to the client.
+
+			* void CreateCondition_Netcall(char *name, int fromMachine, int fromBox)
+				This is similar to the CreateLock_Netcall. It checks whether the condition already exists or not depending on which
+				it either creates a new condition or sends the existing conditions identifier to the client. 
+
+			* void WaitCV_Netcall(int condID, int lockID, int fromMachine, int fromBox)
+				The function begins with a series of error checkings - whether the lock and the condition exists and whether the
+				client has already acquired the lock. If we find that there is no lock associated with the condition, we make
+				that association and then frame a new reply message and append it to the queue. If there is already some association
+				between the lock and the condition then we see whether the incoming lock and condition match that assoication. If not
+				then an error message is sent back to the client. If correct, then we append this reply to the condition's wait queue.
+				No acknowledgement is sent to the client, but lock is released from the client. So the next member that was waiting 
+				for the lock receives an ack that it got the lock. 
+	
+			* void SignalCV_Netcall(int condID, int lockID, int fromMachine, int fromBox)
+				The SignalCV_Netcall checks whether both the lock and the condition exist or not, whether the lock and condition
+				match each other (ie this is the lock that somebody uses to wait on the condition) and whether the client calling
+				signal has already acquired the lock. If everything goes correct, then we remove a reply from the list and then add
+				it to the wait queue of the lock. So when this client calls a ReleaseLock netcall, the ReleaseLock_Netcall
+				automatically makes the waiter the owner of the lock (when its turn comes). Further, if nobody was waiting but a
+				signal was called upon, we de-associate the lock and the condition variables.
+
+			* void BroadcastCV_Netcall(int condID, int lockID, int fromMachine, int fromBox)
+				The function does the same error checking as the SignalCV_Netcall. Then it appends all the members to the wait queue
+				of the lock so that when somebody calls release the respective clients get their chances to acquire the lock.
+				
+
+			* void DeleteCondition_Netcall(int condID,int fromMachine,int fromBox)
+				This function checks whether there is somebody waiting on condition. If not then set the exists bit to FALSE;
+
+	
+
+		3. Algorithm
+		------------
+			
+			As with our other userprograms, the clients issue Netcalls which are the same as Syscalls. These Netcalls then reach the 
+			ExceptionHandler defined in exception.cc which calls the appropriate functions for the appropriate Netcalls. 
+			For example, it the client makes a BroadcastCV syscall, the exception handler calls BroadcastCV_Syscall. These functions
+			which now contain the networking code first of all initialize the Mail and Packet headers to be sent. Everywhere, the
+			server's machine ID has been hardcoded to zero and the messages are sent to mail box 0. The reply back mailbox is set to 1. 
+
+
+
+   IV. IMPLEMENTATION
+   ==================
+
+	Part 1 : TLB
+	------------
+
+		+ Files Modified
+		---------------- 
+ 			* addrspace.h	
+			* addrspace.cc
+			* exception.cc 
+			* progtest.cc 
+			* syscall.h
+			* system.h
+			* makefile in network directory
+			* makefile in vm directory
+	  		* makefile.common in code
+			* makefile in test directory
+			* main.cc
+
+		+ Files Added
+		--------------
+
+			* newtranslation.h
+			* ipt.h
+			* All the Test suites.
+	
+		+ Data Structures Added
+		-----------------------
+			These data structures are added to process.h file
+	
+	
+			* class IPTEntry {
+				public:
+				int virtualPage; 
+				int physicalPage;
+				pageTypeFormat pageType;
+				pageLocationFormat pageLocation;
+				bool valid;
+				bool dirty;
+				bool use;
+				bool readOnly;
+				int PID;
+				int timeStamp;	
+				int test;
+			};
+		
+		
+			* class NewTranslationEntry {
+				public:
+				int virtualPage; 
+				int physicalPage;
+				pageTypeFormat pageType;
+				pageLocationFormat pageLocation;
+				bool valid;
+				bool dirty;
+				bool use	;
+				bool readOnly;
+				int PID;
+				int position;
+			};
+
+	
+			* enum pageTypeFormat {CODE, DATA, UNINIT, STACK,MIXED};
+
+			* enum pageLocationFormat {MAINMEMORY, SWAPFILE, EXECUTABLE, OTHER};
+
+	
+
+		
+	 	+ Data Structures Modified
+		---------------------------
+		
+			No Data Structure was modeified
+	
+
+	 	+ Functions Modified
+		--------------------
+		
+			* AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles)		
+
+			* void StartProcess(char *filename)	
+		
+			* AddrSpace::InitRegisters()
+		
+			* void initprogram(int startValue)
+	
+			* int copyin(unsigned int vaddr, int len, char *buf) {
+
+			* int copyout(unsigned int vaddr, int len, char *buf) {
+
+			* void ExceptionHandler(ExceptionType which) {
+
+	
+		
+		+ Functions Added
+		-----------------
+
+			* void populateIPT(int virPage, int phyPage, pageTypeFormat pType, pageLocationFormat pLocation, SpaceId thisPID)
+
+			* void PageFaultHandler()
+
+	
+
+	Part 2 : Virtual Memory
+	-----------------------
+
+		Note that all the modifications and additions done in Part 1 Implementation is used here as well. Only the additional ones are mentioned here
+	
+		Files Modified
+		--------------
+
+			 * exception.cc - Modified the pageFaultHandler
+		
+			 * machine.h - Reduced the number of NumPhysPages from 512 to 32
+
+		Files Added
+		-----------
+
+			No Files were added
+
+		Data Structures Added
+		---------------------
+
+			No Data Structures were Added	
+
+		Data Structures Modified
+		------------------------
+
+			No Data Structure was Modified
+
+		Functions Added
+		---------------
+		
+			No Functions were added
+
+		Functions Modified
+		------------------
+		
+			void pageFaultHandler()
+			This function now us fully functional for the implemetation of virtual memory. It is equipped to handle page faults whenever there is 
+			a TLB miss. It checks if the corresponding virtual page is in the IPT or not. If present, TLB is updated from the TLB. If the page is 
+			not present in the IPT, then it is taken from page table of the page. Sometimes, the main memory may be full indicating no free slot in 
+			the IPT to put the page. At this time, the function implements either of the two page replacement polices viz. Random Page Replacement 
+			and FIFO Page Replacement to evict a current page in main memory. Then the incoming new page is put in this slot and the IPT is updated. 
+			Then from the updated IPT, the TLB is also updated. The physical page of the new incoming page is also reflected into its page table. 
+			A more detailed explanation of the working of this code is given under Part 2 Design above.
+
+
+	Part III : Remote Procedure Calls
+	---------------------------------
+		
+		Files Added
+		-----------
+			
+			* serverprog.cc  (in network)
+			* serverutils.h  (in network)
+			* serverutils.cc (in network)
+
+		Files Modified
+		--------------
+			
+			* exception.cc (in userprog)
+			* main.cc (in threads)
+			* Makefile.common
+			* Makefile (in networks)
+			* start.s (in test)
+
+		Data Structures Added
+		---------------------	
+			
+			These data structures were added to the serverutils.h
+
+
+			*	class NetLocksClass			[network/serverutils.h]
+				{
+				  public:
+					char name[40];
+					bool exists;
+					bool isBusy;
+					int ownerMachine;
+					List *replyQueue;
+					NetLocksClass();
+				};
+
+			*	class NetCondsClass			[network/serverutils.h]
+				{
+				  public:
+					char name[40];
+					bool exists;
+					bool isBusy;
+					int lockID;
+					List *replyQueue;
+					int queueCount;
+					NetCondsClass();
+				};
+
+			*	class replyType				[network/serverutils.h]
+				{
+				  public:
+					int inPktHdr_from;
+					int inMailHdr_from;
+					char ack[MaxMailSize];
+					int machineID;
+					replyType(int, int, char *);
+				};
+
+
+		Functions Added
+		---------------
+
+			The following functions have been added in network/serverutils.cc
+	
+			*	void putData(char *, int)
+
+			*	void formPacket(char *packet, int syscallType, int parameter1, int parameter2, char *msg)
+
+			*	void getData(char *data, int *i)
+
+			*	void parsePacket(char *packet,int *syscallType, int *parameter1, int *parameter2, char *msg)
+
+			The following has been added in exception.cc 
+
+			*	void Delay_Syscall(int i); 
+
+			
+			The following functiona are added in network/serverprog.cc
+
+			*	void SendAck(int inPktHdr_from, int inMailHdr_from, char *ack_local)
+
+			*	void CreateLock_Netcall(char *name, int fromMachine, int fromBox)
+
+			*	void AcquireLock_Netcall(int lockID, int fromMachine, int fromBox)
+
+			*	void ReleaseLock_Netcall(int lockID, int fromMachine, int fromBox)
+
+			*	void DeleteLock_Netcall(int lockID, int fromMachine, int fromBox)
+
+			*	void CreateCondition_Netcall(char *name, int fromMachine, int fromBox)
+
+			*	void WaitCV_Netcall(int condID, int lockID, int fromMachine, int fromBox)
+
+			*	void SignalCV_Netcall(int condID, int lockID, int fromMachine, int fromBox)
+
+			*	void BroadcastCV_Netcall(int condID, int lockID, int fromMachine, int fromBox)
+
+			*	void DeleteCondition_Netcall(int condID,int fromMachine,int fromBox)
+
+			*	void StartServer()
+
+			This function has been added in userpgor/exception.cc
+
+			*	void Delay_Syscall(int i)
+
+
+		Functions Modified
+		------------------
+
+			The following functions have been modified in exception.cc to handled networking.
+			
+			*	int CreateLock_Syscall(unsigned int vaddr, int len)
+
+			*	void AcquireLock_Syscall(int lockID)
+
+			*	void ReleaseLock_Syscall(int lockID)
+
+			*	void DeleteLock_Syscall(int lockID)
+
+			*	int CreateCondition_Syscall(unsigned int vaddr, int len)
+
+			*	void WaitCV_Syscall(int condID,int lockID)
+
+			*	void SignalCV_Syscall(int condID,int lockID)
+
+			*	void BroadcastCV_Syscall(int condID,int lockID)
+
+			*	void DeleteCondition_Syscall(int condID)
+
+
+
+   V. TESTING
+   ==========
+
+	I & II. Parts 1&2 - TLB and Virtual Memory
+	-----------------------------------------
+
+	Note that in the following tests, if no -P RAND or -P Flag command line argument is specified, the program executes in -P FIFO fashion by default
+	
+	+ How to Test
+		
+		Run nachos -P RAND ../test/testsuite1
+				or
+		Run nachos -P FIFO ../test/testsuite1
+
+	+ Test Output
+		
+		* Initially visitorCountLock and MAX number of Locks "locks" and Condition variables "conds" are created.
+		* Then MAX number of threads (TestFunc) are forked.
+		* Each of the threads grab an id. They then acquire their Lock lock[id] and wait on it. 
+		* The main function then signal on these condition variables using these locks. 
+		* The threads wake up and display a message "woken up".
+		* We also note that trying to acquire a lock that doesn't exist or a lock with negative identification results in a display of error.
+
+	+ How to Test
+		
+		Run nachos -P RAND ../test/testsuite2
+				or
+		Run nachos -P FIFO ../test/testsuite2
+		
+	+ Test Output
+
+		* The program issues two exec commands and so executes ../test/testsuite2_1 and ../test/testsuite2_2
+		* The program then forks MAX number of TestFunc() threads. 
+		* Each thread acquires a lock and then reads its id and then releases it.
+		* Each thread also issues a Yield command.
+		* The output indicates how each thread or process exits.
+		* Every time a thread exits, it displays a message. It just finishes if there are more threads running.Otherwise if it is the last
+		  thread then  it wakes up its parent thread.
+		+ The exit display messages also indicates whether an exiting process is the last process or not.
+		* So here testsuite2 execs testsuite2_1 and testsuite2_2. testsuite2_2 execs matmult twice and also forks a thread twice.
+		* So totally there are six processes with ids ranging from 0 to 5.
+		* Each of the thread forked yields and when the new thread is forked, the previous thread exits. So for sometime, the thread count 
+		  always remains 2.
+		* When the last thread exits, the exit system call displays that the last process is going to terminate.
+	
+	+ How to Test
+
+		Run nachos -P RAND ../test/testsuite3
+				or
+		Run nachos -P FIFO ../test/testsuite3
+
+	+ Test Output
+	
+		* The program begins with asking the number of senate programs to run. 
+		* Based on the number input, those many number of senate programs are exececuted using exec.
+		* Each senate program asks whether you want to perform a system test or a a set of repeatable tests.
+		* The system test sends in a president, then senators, and then visitors.
+		* This order can be changed in the repeatable test. This is well documented in our first project writeup.
+		* At the end of the program, the summary threads display a summary for each program. So if we had ran the senate program 2 times
+		  we would get 2 summaries, one for each program. Note that the number of visitors is equal to the sum of the number of visitors 
+		  accepted and denied.
+
+	+ How to Test
+	
+		Run nachos -P RAND ../test/testsuite4
+				or
+		Run nachos -P FIFO ../test/testsuite4
+
+	+ Test Output
+
+		* The program begins by execing the sort program inside a for loop
+		* The for loop runs twice
+		* Once the sort programs are execed, a local function is forked five times
+		* At the end of execution, the output of the five forks and the output of the two sorts are displayed.
+		
+
+  
+	Part III : Remote Procedure Calls
+	---------------------------------
+
+	+ How To Test
+
+		On six different windows type the following commands in this order:
+	
+			* nachos -m 0 -server
+			* nachos -m 1 -x ../test/client1
+			* nachos -m 2 -x ../test/client2
+			* nachos -m 3 -x ../test/client3
+			* nachos -m 4 -x ../test/client4
+			* nachos -m 5 -x ../test/client5
+	+ Test Output
+
+		Clients 1 through 5 create lock "Client1 Lock" and condition "Client1 Cond". So all of them get the same lockID and condID
+		Client 3 creates lock "Client3 Lock" and condition "Client3 Cond". 
+		Client 5 creates lock "Client5 Lock" and condition "Client5 Cond". 
+		Client 5 is successfully able to delete "Client5 Lock" and "Client5 Cond". 
+		Client 1 Acquires "Client1 Lock" and starts execution. 
+		Client 5 tries to delete "Client1 Lock" but is unable to do so since the lock is in use.
+		Clients 2 and 4 issue acquire netcalls for "Client1 Lock" but have to wait.
+		Client 1 now starts waiting on "Client1 Cond" with "Client1 Lock" and so Client 2 starts execution.
+		Client 2 now starts waiting on "Client1 Cond" with "Client1 Lock" and so Client 3 starts execution.
+		Client 3 now signals and so Client 1 wakes up and resumes execution.
+		Finally Client 5 broadcasts so Client 2 wakes up after which Client 4 wakes up.
+		Client 5 attemtps to delete non-existent conditions and locks and so gets error messages. 
+		Finally Client 5 waits for some time to make sure all the clients have finished using "Client1 Lock". 
+		Then Client 5 deletes "Client1 Lock".
+		
+
+   VI. DISCUSSION
+   ==============
+
+	+ Experiment Expectation
+	------------------------
+	
+		Part I : TLB
+		------------
+		It is expected to implement the Translation LookAside Buffer for the pages of the program. There is just one TLB for all the programs
+		The TLB has just 4 slots and hence we can have a maximum of 4 pages that are referenced in the TLB at any point of time. Since the
+		program that executes is expected to have  more number of pages, it is imperative that overwriting in the TLB happens correctly. Whenever 
+		a program runs the page is first looked for in the TLB. If the page is not in the TLB, this corresponds to a TLB miss. On a TLB miss, TLB 
+		is to be populated and updated from the IPT. The IPT has one entry for every page in the main memory and is a mapping of physical pages to 
+		virtual pages. If the corresponding entry is not present in the IPT, then this now corresponds to an IPT miss. On an IPT miss, the IPT is to 
+		be updated from the page table and the corresponding change is to be reflected in the TLB as well. Also, it is required to invalidate the 
+		TLB entries everytime on a context switch.
+
+		In part 1, it is expected that a program that fits in main memory runs to completion. This requires the programs matmult and sort to run to 
+		completion. Also, it should be possible that 2 programs that fit in main memory together run to completion in diff address spaces. Threads running 
+		in diff address spaces cannot corrupt each others memory. This must also work with multiple threads in a single address space.
+
+
+		Part II : Virtual Memory
+		------------------------
+		It is expected to implement virtual memory to allow programs to run to completion that have more pages than available main memory space. This
+		can be done by swapping in - swapping out mechanism. Whenever the main memory is full, it is required to evict a page from the main memory to
+		accomodate the new incoming page. Routines should be available to move pages from main memory to disk and vice versa. A swap file is used for 
+		this purpose. Two page replacement schemes are to be implemented. The random page replacement policy, randomly chooses a page in main memory 
+		and removes it. The First in First out page replacement policy removes that page from the main memory that came in to the main memory first, 
+		in other words, it has stayed in main memory the longest. Now, this slot in main memory from which the page was evicted is used for the new 
+		incoming page. This also requires a corresponding update of the IPT and the TLB. Also, the physical page of the new incoming page is to be stored 
+		in its page table. Note that there is just a single swap file for all the nachos processes. And this swap file is organised by pages. No preloading 
+		of pages into memory is performed. We expect that two or more programs that are each larger than 32 pages of main memory run to completion. The page
+		replacement policy can be specified by the user as a command line argument during run time.
+
+
+		Part III : Remote Procedure Calls
+		---------------------------------
+		We run clients 1 through 5 and the server. Clients 1 through 5 get the same lockId and the same condID. For other clients which
+		create different locks and conditions, they get different lock and condition identifiers. It is expected that only one client 
+		runs at a time when it has acquired a lock. And after they wait they are expected to release the lock. One somebody signals 
+		exactly one waiting client must be woken up and when there is a broadcast netcall all the waiting members are to be woken up.
+		Also it is expected that deleting locks and condition variables that are in use or has not been created throws up error
+		(without crashing nachos).
+
+
+	+ Experiment Result
+	-------------------
+		
+		Part I : TLB
+		------------
+		Whenever there is a TLB miss, the entry is updated from the IPT. IF there is an IPT miss as well, then IPT is updated from the page table and then
+		the TLB is updated from the IPT. The programs matmult or sort ran to completion. Also mutliple execs of matmult or sort ran to completion. These 
+		programs that possibly forked other threads in addition with the execs also ran to completion.
+	
+	
+		Part II : Virtual Memory
+		------------------------
+		Virtual memory using the swap file has been implemented. Whenever the main memory is full, a page replacement policy is chosen and pages are evicted
+		in that fashion. Two or more programs that are larger than 32 pages of main memory ran to completion.
+
+
+		Part III : Remote Procedure Calls
+		---------------------------------
+		We ran the server and five clients. We get the expected result as explained above in the Test output
+
+	
+	+ Experiment Explanation
+	  ----------------------
+
+		Part I : TLB
+		------------
+		The TLB miss is handled as required. It gets updated from the IPT. If, there is an IPT miss, then the IPT is updated from the page table and then the
+		TLB is updated from the IPT. A program that fits into main memory runs to completion. Also, two programs that fit into main memory together run to
+		completion in different address spaces. Threads running in different address spaces don't affect each other's memory and this holds good for multiple
+		threads within a single address space as well
+
+
+		Part II : Virtual Memory
+		------------------------
+		Virtual Memory implemention is done using a single swap file for all nachos processes. The swap file is organized by pages.Programs run to completion 
+		when there is no preloading into memory. Random or FIFO page replacement policies run as per user input. Two or more programs that are each larger 
+		than 32 pages of main memory run to completion.
+
+
+		Part III : Remote Procedure Calls
+		---------------------------------
+		Implementation of Remote Procedure Calls has been done. The server and the five clients conmunicate successfully. The locks created are properly acquired
+		and released. Also, if two or more clients try to create the same lock, only once its created and all the other clients receive just the lock's ID. Several
+		clients requesting to acquire a lock get queued up. Condition Variables also have been created and there is proper synchronization between Wait and 
+		Signal netcalls. A thread can wait on a condition variable and lock, without acquiring the lock. The same holds good for Siganel netcall as well. It is not
+		possible to acqurie or release locks with invalid ID or with ID that is out of the range of the maximum possible locks. The same holds good for Condition
+		variables as well.
+
+
+
+   VII. MISCELLANEOUS
+   ==================
+
+	+ Since the execution of matmult and especially sort is taking a very long time, we request the grader to wait for a few mins before concluding that the program
+	  has gone an infinite loop without gracefully exiting.
+	  Note that the execution of testsuite4 takes about 30 minutes to complete.
+
+	+ We have implemented a delay system call, that will delay for the number of seconds that is passed as a parameter to it. This system call is used in part 3 so that
+	  the output is comprehendable and helps understand the sequence of events.
+	
+	+ Since the server is put in the while(1) loop, the grader is required to hit ctrl+c to stop execution of the server. 

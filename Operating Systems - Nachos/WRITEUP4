@@ -1,0 +1,1237 @@
+   Title: Writeup for Project 4, Fall 2008
+
+   Date: 11/30/08
+
+   I. REQUIREMENTS:
+   ================
+
+	In project 4 we have developed a distributed senate pay phone system. .The components of the distributed system work in concert to 
+	provide services to clients and appear to clients as if they are being served by a single reliable system. Distributed system offers 
+	increase in operational performance, system availability, and allows other desirable features to be implemented such as load balancing, 
+	resource sharing, reliability and fault-tolerance.
+
+	Part 1 : Distributed Senate Pay-Phone System with Single Server
+	---------------------------------------------------------------
+
+	In Part 1 of project 4 we develop a single server- distributed senate pay phone system. The requirements for such a system are:
+
+	- We need to have a single centarlized server.
+	- This server must take care of mutual exclusion issues- access to shared resources. For this to happen, the server maintains 
+	  the state of the shared resources in the server's kernel. 
+	- Any user program on any Nachos client machine can interact with each other only via this server.
+	- Thus communication between userprograms (threads)cannot take place using shared memory or directly. This is achieved issuing 
+	  'RPCs'to the server.
+	- Nachos client must host atleast 5 userprograms (threads).
+	- We need to create a new set of RPCs for the user programs to get and make changes to shared data.
+
+
+	Part 2 : Distributed Senate Pay-Phone System with Multilpe Servers
+	------------------------------------------------------------------
+
+	In Part 2 of project 4 we achieve a complete distributed system by replacing the single server by a group of coherent servers.
+	The requirements for such a system are:
+
+	- The servers together as a group maintain the state of the Senate Pay phone system.
+	- The client can randomly select any server and send a request message to it asking for access to critical region.
+	- This server must inform other servers about this request from the client; so that they can collectively decide on whether the request can 
+	  be conceeded or must be put on hold for later allocation. This is the fully redundant approach.
+	- Inorder to achieve this, the request messages must comprise of timestamps and client program machineId. The request is granted based on 
+	  the timestamp and machineId as priority. 
+	- But, the reply message back to the Client program must be sent by the server receiving the request.
+	- The servers must continuously inform each other of their presence.
+	- There must be atleast 5 servers working together in the group.
+	- The server group must support multiple Nachos instances each handling atleast 5 user programs.
+
+
+	Part 3 : Fault Tolerant Distributed Pay-Phone system
+	-----------------------------------------------------
+
+	- The servers could die randomly.
+	- We are supposed to handle this i.e the pay phone system must still continue to work till there is
+	  one server left.
+	- Specifically we are supposed to handle the following cases:
+	- The server might die before getting any input from client.
+	- The server might get a request but die before it forwards
+	- The server might get a request, forward it to others and then die before replying.
+
+
+
+
+   II. ASSUMPTIONS
+   ===============
+
+	Part 1: Distributed Senate Pay-Phone System  with Single Server
+	---------------------------------------------------------------
+	
+		+ We assume that the servers always have machineID from 0 to the one less than the number of servers.
+		+ All the clients stubs send their netcalls to the MailBox 0 and they listen back for acknowledgements at MailBox 1.
+		  Hence the server listens at MailBox 0 always for commands.
+		+ The server program and the server stub are the same
+		+ The server is infinitely ON. It never terminates [unless we kill the process].
+		+ The network reliability (as set in Nachos) is 1. So there are no packet losses and no data degradation
+		+ If two clients request to create locks with the same name, the one that is received first is created first and that identifier
+		  is sent to the second client. Thus names are the unique identifiers for locks. The same is assumed for conditions and shared integers.
+		+ We are using preloading of pages into the memory and so we assume that pagefaults do not occur.
+		  Thus we do not use TLB/IPT and so we do not have any mechanism for handling page faults.
+		  Hence we need to set the NumPhysPages to 512
+		+ Our server program is completely GENERIC except that we initialize the array phoneStatus to all 1s when it is created
+		  for the first time. 
+		  
+
+	Part 2: Distributed Senate Pay-Phone System with Multiple Servers
+	-----------------------------------------------------------------
+
+		+ We assume that the servers always start with machineID 0 and each server's machine ID is 1 greater than the previous server's.
+		+ We also assume that the clients start their machineID from 1 greater than the machine ID of the last server.
+		+ It is assumed that the President and the Senators make a maximum of 3 calls in order to improve the running time of the program. Otherwise,
+		  the program takes a very long time to complete and eventually the nachos network blows up.
+
+	Part 3 : Fault Tolerant Distributed Pay-Phone system
+	-----------------------------------------------------		
+
+		+ We assume that the servers do not die during the process of forwarding i.e. they have forwarded
+		 the message to some of the other servers but die before completing sending to all servers.
+		+ We assume that the clients die. 
+		+ We assume that a message can be uniquely identified by a combination of its message index (0 to 999) and the origin (machineID and mailbox)
+
+	
+
+   III. DESIGN
+   ===========
+
+	Part 0: General Idea of the design
+	-----------------------------------
+	
+		 __________________________________________________________________________________________________________________________________________________________________________
+		|		   |                   | 	              |		     		    |		    |		  |		|		|		   |					|
+		| Message Type[1]  |  Netcall Type [2] | Client Machine ID[2] | Reply-to MailBox Number [2] | Parameters[4] | Time.t1 [4] | Time.t2 [4] | Message [18]	| MessageIndex [3] |
+		|		   |                   |	              |		     		    |		    |		  |		|		|		   |
+		 __________________________________________________________________________________________________________________________________________________________________________
+
+		 Note : (1) The bracketed terms specify the number of bytes for each of the field. 
+			(2) The packet structure is same for the two directions of communication - thus we can make use of one set 
+			    of functions for parsing the packets at both the client and the server stubs.
+
+		We have detailed about the fields in subsequent sections. 
+
+	Part 1: Distributed Senate Pay-Phone System  with Single Server
+	---------------------------------------------------------------
+	
+	In part 1 of our distributed system we have 1 server instance and 5 client instances of NACHOS. The 5 client instances each have 5 user
+	programs within them.
+	
+	Client 1: 5 Operators
+	Client 2: 1 President and 4 Visitors
+	Client 3: 5 Senators
+	Client 4: 5 Visitors
+	Client 5: 5 Visitors
+
+	The synchronisation between these individual programs was established already in project 3 using RPCs for Locks and Condition Variables.
+	But we also need RPCs to create, access and modify shared data/value between these programs. Thus, we created 3 new syscalls. The shared 
+	ints accessed by these yscalls are presidentStatus, phoneStatus, freeOperators,operatorStatus, activate and authentication.These datas need
+	to be shared by userprograms running on different NACHOS instances also.
+
+	- CreateSharedInt: Create the first instance of the required shated data or get back the reference of the shared data.
+	- GetSharedInt   : Access and read the shared data
+	- SetSharedInt   : Make changes/Modify the shared data. 
+
+	
+	** CreateSharedInt RPC
+
+	- The client program- either president, senator, visitor or operator, requests the  creation of a particular shared data variable on beginning 
+	  execution.
+	- This is request reaches the centralized server in the form of an RPC as defined in project 3. 
+	- The parameters such as name of the shared int, how many instances are required ,machine and mail Ids of the requesting client are parsed from the RPC.
+	- The shared int list is searched using the name parameter to see if the data variable is already created.
+	- If the shared int variable already exists then, the reference number for that is passed on to the requesting client.
+	- If not already created, a new unique reference number is created for the shared data and the value is passed on to the requesting client in an
+	  ACK packet.
+
+
+	** Accessing the Shared Data RPC
+
+	- The client initially has to acquire the lock associated with the shared variable.
+	- The client praogram makes a request to read the values from the shared data.
+	- This is achieved using RPCs as the shared data is now managed by a single centralized server and not between threads themselves.
+	- The request message consists of the reference number of the shared data and address details of the client program for future reference.
+	- The validity of the reference number is checked.
+	- The value of the variable is then sent to the client program by the server using an ACK message.
+
+	** Modifying the Shared data.
+
+	- The client initially has to acquire the lock associated with the shared data.
+	- The client praogram makes a request to modify the value of the shared data.
+	- This is achieved using RPCs as the shared data is now managed by a single centralized server and not between threads themselves.
+	- The request message consists of the reference number of the shared data,new value to be set and address details of the client program for future reference.
+	- The validity of the reference number is checked.
+	- The value of the variable is then set to the new value requested by the client program.
+	- An ACK message is sent to the requesting client program by the server.
+
+	Note: We have modified the code of the client programs- President, Senators, Visitors and Operators such that they access and modify the shared variables
+	      by only using RPCs. In the starting of the program itself all the client programs get the reference number associated with each shared variable.
+	      All the request messages are sent to the centralized server.
+				
+
+	Server Program
+	--------------
+
+	- The exception handling mechanism is set up for the 6 new RPCs.
+	- The functions for handling these RPCs are included in the server program
+
+
+	Class Description	
+
+		* NetLocksClass
+			This class is used as the lock datatype by the server. It contains fields that specify whether a lock exists or not, 
+			whether or not the lock is busy, the name of the lock, owner of the lock etc. For multiple locks, we use an array
+			of these objects. Thus the members are: (all are public)
+			*	char name[40];
+			*	bool exists;
+			*	bool isBusy;
+			*	int ownerMachine;
+			*	List *replyQueue;
+			*	NetLocksClass();
+			replyQueue is a queue of reply messages (which are objects of the class replyType mentioned below)
+
+		* NetCondsClass
+			This class is similar to the NetLocksClass and is used to represent conditions. Again, an array of the objects of this
+			class is used for muliple conditions. Thus the members (all are public) are:
+			*	char name[40];
+			*	bool exists;
+			*	bool isBusy;
+			*	int lockID;
+			*	List *replyQueue;
+			*	int queueCount;
+			*	NetCondsClass();
+
+		* replyType
+			This class is used to store the replies that are to be sent back. For example, when a lock is not available to
+			be acquired, we	make an object of this class and append it to the waiting queue in that particular lock. 
+			When a ReleaseLock is called upon, we check whether there is some reply in the lock's waiting queue. If so, we make 
+			that machine which is destined for the reply to be the lock's owner and send an acknowledgement to that machine
+			using this reply. The members (public) are:
+			*	int inPktHdr_from;
+			*	int inMailHdr_from;
+			*	char ack[MaxMailSize];
+			*	int machineID;
+			*	replyType(int, int, char *);
+			The machineID is same as that of inPktHdr_from, a redundancy incorporated in order to make things clear.
+
+		* sharedIntsClass
+			This class is used to store the details of shared integers which are shared between userprograms. The members (public) are:
+			*	char name[40] - Holds the name of the shared integer.
+			*	int length - An integer that stores the number of variables of this shared integer type.
+			*	int *value - This stores the value of each of the shared integer and this is as many as the value stored in length
+			*	bool exists - Used to check if a particular shared integer exists or not
+			* 	sharedIntsClass() - Constructor to initialize the values
+
+
+	Function Description:
+	
+		* void putData(char *str, int i, int applyAlgo)
+			If the applyAlgo integer is 0 then this function splits the integer into two digits and stores their character equivalent
+			inside str[0] and str[1].
+			Otherwise, it splits the given integer i into four bytes and then stores them in the given string at positions 0,1,2,3.
+			For this we continuosly shift the integer by 8 bits each time and get each of those bytes. 
+			The main advantage of this function is that if the given integer to be stored is say 9 digits, instead of occupying each
+			byte for each digit in the character array, we only use four bytes. There is thus a lot of savings. 
+			If suppose i is 1431655765 which has a binary equivalent 01 followed 16 times (integers are 4 bytes and hence 32 bits)
+			then, we split it into 4 bytes which are 01010101 (four times) and convert each of this as a character to store it. Thus 
+			instead of requiring 10 bytes we are using only 4 bytes.
+
+		* void formPacket(char *packet, int mType, int syscallType, int machineID, int mailBoxID, int parameter1, int parameter2, int parameter3, timeCounterClass *time,  char *msg)
+		* void formPacket(char *packet, int syscallType, int parameter1, int parameter2, char *msg)
+			These are two overloaded functions that do similar operations. 
+			The first function puts
+				+ mType (single byte) at packet[0]
+				+ syscallType (2) at packet[1]
+				+ machineID (2) at packet[3]
+				+ mailBoxID (2) at packet[5]
+				+ parameter1*10000 + parameter2*100 + parameter3 (4 bytes) at packet[7]
+				+ time.t1 (4) at packet[11]
+				+ time.t2 (4) at packet[15]
+				+ msg (-) at packet[19]. A string message can be of any length upto a maximum of 18.				
+	
+			The second function forms the packet in the character array packet by taking in syscallType, paramete1, parameter2 and
+			msg. Thus this function calls putData thrice with syscallType stored at packet+!, parameter1 stored at packet+3,
+			parameter2 stored at packet + 5 and the message copied in the remaining array starting from packet + 19
+			We ignore other positions for this second overloaded function. 
+
+
+		* void getData(char *data, int *i, int applyAlgo)
+			If applyAlgo is false, then this function takes a character array pointed by data, and puts the numeric equivalent of the first two characters
+			inside the pointer pointed by i. Hence the calling function then just has to use i. 
+			For example if data consited of characters like {'1','2','0','3'........} then getData(data,parameter1) (parameter1
+			is a pointer) will set *parameter1 = 12 (integer) and similary getData(data+2, parameter2) will set *parameter2 = 3
+			If applyAlgo is true, then we use the four bytes stored in the string from position 0 to 3 and then apply right shift 
+			operator iteratively to get the integer equivalent.
+			For example, if we get each of the bytes to be 01010101 then the bull binary version is 01010101010101010101010101010101
+			which is 1431655765.
+
+		* void parsePacket(char *packet, int *mType, int *syscallType, int *machineID, int *mailBoxID, int *parameter1, int *parameter2, int *parameter3, timeCounterClass *time, char *msg)	
+		* void parsePacket(char *packet,int *syscallType, int *parameter1, int *parameter2, char *msg)
+			These are two overloaded functions.
+			These do the exact opposite of the formPacket functions. 
+			For example, the second function gets in packet and returns (via pointers) the syscallType, parameter1, parameter2 and a character
+			message. Hence you have to perform getData thrice with packet + 1, packet + 3 and packet + 5. The remaining content
+			of the packet (pointed by packet + 19) is copied into msg using strcpy function.		
+
+		* StartServer()
+			This is the server function which takes nothing and returns nothing. It continuously loops using a while true loop.
+			The server listens to incoming messages at MailBox 0. Once it receives a packet, it then calls parsePacket function
+			which spilts up the message into components that can be handled by the server. It identifies the machine that has
+			requested the netcall and the reply-to mailbox. Knowing the netcall type the server calls the appropriate functions
+			(like AcquireLock_Netcall etc.) and it passes the appropriate parameter and/or the message, and the machine id and
+			reply back mailbox identifier. Each of these functions then handle the acknowledgement as required. 
+			
+		* void SendAck(int inPktHdr_from, int inMailHdr_from, char *ack_local)
+			This function is used to send acknowledgements - basically messages. Once the packet has been formed by some function,
+			it calls this function with the appropriate values of inPktHdr_from, inMailHdr_from and the acknowledgement. 
+			This function then creates the necessary headers and then calls the postoffice Send.
+			Also this sends acknowledgement only if the global flag sendAckValid is true. This is mainly useful in multiple server
+			scenario.
+
+		* void CreateLock_Netcall(char *name, int fromMachine, int fromBox)
+			This function handles the job of creating locks. It receives the name of the lock in variable name. 
+			It searches whether this lock already exists using the name. If not then it creates a new lock and sends the index
+			back to the client.
+			If the lock already exists, then the client receives the identifier of the existing lock
+
+		* void AcquireLock_Netcall(int lockID, int fromMachine, int fromBox)
+			This function checks whether the lock exists or not. If the lock exists, it sees whether the lock is busy or not.
+			If the lock is not busy, then it makes this client the owner of the lock and then sends an acknowledgement back 
+			to the client saying that it has acquired the lock (by setting parameter1 to 1 which indicates a success).
+			If the lock is already busy, then it frames a new reply and appends it to the lock's wait queue defined by replyQueue.
+
+		* void ReleaseLock_Netcall(int lockID, int fromMachine, int fromBox)
+			This does a couple of checkings - whether the lock exists or not, whether the lock is busy or not and whether
+			the client trying to release the lock is the owner of the lock. If something goes wrong it sends back a 0 to the client
+			with suitable error message. If everything is correct, then it sees whether there are some more clients waiting for
+			the lock (by checking the replyQueue). If there are none, then it just frees up the lock by making the isBusy field to 
+			be false and removing the owner information. If there is someone waiting, the lock's owner information is updated to
+			the waiter's id and then an acknowledgement is sent to the client which was waiting for the lock to be acquired 
+			saying that the lock has been acquired. 
+
+		* void DeleteLock_Netcall(int lockID, int fromMachine, int fromBox)
+			Again, this does a couple of checkings - whether the lock is exists and whether it is busy. Then it deletes the lock
+			by setting the exists bit to FALSE and then sending appropriate acknowledgement to the client.
+
+		* void CreateCondition_Netcall(char *name, int fromMachine, int fromBox)
+			This is similar to the CreateLock_Netcall. It checks whether the condition already exists or not depending on which
+			it either creates a new condition or sends the existing conditions identifier to the client. 
+
+		* void WaitCV_Netcall(int condID, int lockID, int fromMachine, int fromBox)
+			The function begins with a series of error checkings - whether the lock and the condition exists and whether the
+			client has already acquired the lock. If we find that there is no lock associated with the condition, we make
+			that association and then frame a new reply message and append it to the queue. If there is already some association
+			between the lock and the condition then we see whether the incoming lock and condition match that assoication. If not
+			then an error message is sent back to the client. If correct, then we append this reply to the condition's wait queue.
+			No acknowledgement is sent to the client, but lock is released from the client. So the next member that was waiting 
+			for the lock receives an ack that it got the lock. 
+	
+		* void SignalCV_Netcall(int condID, int lockID, int fromMachine, int fromBox)
+			The SignalCV_Netcall checks whether both the lock and the condition exist or not, whether the lock and condition
+			match each other (ie this is the lock that somebody uses to wait on the condition) and whether the client calling
+			signal has already acquired the lock. If everything goes correct, then we remove a reply from the list and then add
+			it to the wait queue of the lock. So when this client calls a ReleaseLock netcall, the ReleaseLock_Netcall
+			automatically makes the waiter the owner of the lock (when its turn comes). Further, if nobody was waiting but a
+			signal was called upon, we de-associate the lock and the condition variables.
+
+		* void BroadcastCV_Netcall(int condID, int lockID, int fromMachine, int fromBox)
+			The function does the same error checking as the SignalCV_Netcall. Then it appends all the members to the wait queue
+			of the lock so that when somebody calls release the respective clients get their chances to acquire the lock.
+				
+
+		* void DeleteCondition_Netcall(int condID,int fromMachine,int fromBox)
+			This function checks whether there is somebody waiting on condition. If not then set the exists bit to FALSE;
+
+		* void CreateSharedInt_Netcall(char *name,int length,int fromMachine,int fromBox)
+			This function is used to create an integer array that is shared between different nachos clients.It takes in the name of the shared
+			integer and the length of the shared integer array. It then creates the shared integer and associates a new integerID to
+			it if the shared integer already doesn't exist. If it already exists then it associates the existing integerID to it and replies
+			back to the stub by creating a packet with this integerID.
+
+		* void GetSharedInt_Netcall(int integerID, int position, int fromMachine, int fromBox)
+			This function is used to access the shared integer arrays that were created using the CreateSharedInt_Netcall netcall. If a client
+			needs to check the current value of a particular shared integer then it can invoke this netcall on that integer. The position
+			indicates the location of the shared variable (denoted by integerID) whose value has to be obtained.
+		
+		* void SetSharedInt_Netcall(int integerID, int position, int fromMachine, int fromBox)
+			This function is used to set/modify the value of a shared a variable that was created using the CreateSharedInt_Netcall netcall. 
+			The position of the array in the shared variable that has to be modified is given by position.
+
+		* void GetOneIndex_Netcall(int integerID, int fromMachine, int fromBox)
+			This function searches for a 1 in the array and sends the first location that it found.
+			If no results are found then the length of the array will be sent.
+
+		* void GetZeroIndex_Netcall(int integerID, int fromMachine, int fromBox)
+			This function gets a index of the first occurence of 0 in the array specified by integerID.
+			If no results are found then the legnth of the array will be sent.
+		
+		* void ArraySearch_Netcall(int integerID, int skipIndex, int equalityValue, int fromMachine, int fromBox)
+			This is a generic netcall used to do a search in the array specified by the integerID.
+			The shared variable is denoted by integerID. 
+			The function then scans through the array to find the first occurence of equalityValue.
+			Additionally we can also specify a position in the array which has to be skipped. 
+			If no results are found then the length of the array will be sent.
+			So it is possible to use this function as a replacement to GetOneIndex and GetZeroIndex system calls where the
+			equalityValue will be 1 or 0 respectively and the skipIndex can be a value higher than the length of the array.
+
+		Clearly, these three functions above are not specific to the Senate Pay Phone system. They can be used in any program. The clear advantage is that
+		if we the search result is at say the 20th position, we will have to ordinarily do 20 GetSharedInt system calls as compared to one 
+		ArraySearch system call.
+
+
+	Part 2: Distributed Senate Pay-Phone System with Multilpe Servers
+	------------------------------------------------------------------------------------
+
+	The Distributed Senate Pay-Phone System with Multiple Severs requires upto a maximum of 5 servers to work concurrently and handle client requests.
+	The client picks one out of the five servers randomly and sends its request to that server. This request is processed by this server and a reply is
+	sent back to the client. But for the servers to work concurrently, it is required that all the 5 servers process this request, but only the sever
+	that got the request from the client, replies back to the client. Thus the server which received the request from the client first forwards the request
+	to the other servers includeing itself, then processes the request and then sends the reply to the client. Also, each server sends a heart beat to all 
+	the other servers every 10 seconds indicating that it is alive. Four types of messages have been defined:
+
+		+ CLIENTREQ: Represents a request message from a client to a server.
+		+ SERVERREQ: Represents a client request forwarded by a server to other servers.
+		+ SERVERACK: Represents an acknowledgement from a server that received a SERVERREQ
+		+ SERVERHBT: Represents the Heart-Beat
+		+ SERVERPNG: Represents PING messages
+
+	
+	The sequence of events is as follows:
+
+		+ Cliet sends a request
+		+ This raises a syscall exception in exception.cc which acts as the stub
+		+ The appropriate syscall is invoked. It creates a packet and sends it to a server that is randomly picked.
+		+ At the server the packet is parsed and the appropriate netcall is invoked
+		+ The processing of the request is done and a reply is sent back to the client
+	
+	
+	Initial processing before invoking the netcall at the server (in serverprog.cc):
+
+		+ The packet from the stub is parsed and further processing is done according to the message type
+		+ If CLIENTREQ
+			- The server that received the client request creates a new packet that is exactly the same as what it got from the client but makes the 
+			  packet type SERVERREQ. It also overwrites the client timestamp with its own timestamp that was calculated once the packet was received.
+			- It then forwards it all the other servers including itself
+		+ If SERVERREQ
+			- The server checks if its machine ID is the same as that contained in the message.
+			- If yes, then it knows that its the server that received the request from the client and hence it has to reply. Otherwise, it just has to
+			  process the request but does not have to reply back to the client. A flag is set for this purpose
+			- Now the timestamp table is updated for this request at all the servers under the slot for the server from which the SERVERREQ was received.
+			- Then this request is added to the wait queue.
+			- If the server sees that its machine ID doesn't match the one in the SERVERREQ that it received, then it has to acknowledge the receipt of
+			  the SERVERREQ to the server which sent it.
+			- For this purpose, it calculates the current timestamp and then creates an acknowledgement packet with this timestamp and then sends it to
+			  the server that sent the SERVERREQ.
+			- Then, it updates its timestamp table for its own slot with the latest calculated timestamp.
+		+ If SERVERACK
+			- Update the timestamp table for the slot of the server from which the ackowledgement was received.
+		+ If SERVERHBT
+			- Update the timestamp table for the slot of the server from which the heartbeat was received.
+		+ If SERVERPNG
+			- Do not respond, just 'continue' from start of the infinite while(1) loop.
+
+	
+	Processing of CLIENTREQ happens as follows:
+		
+		+ Each server finds the minimum timestamp from its timestamp table.
+		+ The machine ID of the client corresponding to this timestamp is also obtained from the timestamp table.
+		+ The request corresponding to this machine ID is removed from the wait queue.
+		+ The request message is then parsed and the syscall type is checked.
+		+ Depending on the syscall type, the appropriate netcall is invoked and the processing is done.
+		+ Then a reply is sent that is received at the stub which then returns to the client.
+		
+	
+	Calculation of TimeStamp:
+		
+		+ The function getTime() returns the current time
+		+ Two variables t1 and t2 have been used to monitor the timestamp
+		+ t2 stores the current time and t1 is an incrementing counter
+		+ Every time t2 rolls back to zero after reaching the maximum value, t1 is incremented by 1.
+		+ This processing is done by the function getTimeStamp()
+		+ On comparing two times, the one in which t1 is smaller is the minimum time.
+		+ If both t1s are equal, then the one in which t2 is smaller is the minimum time.
+		+ If both t1s are equal and both t2s are equal, then a tie has occured and we use the machine ID to break the tie.
+		+ In this case, the lower machine ID gets higher priority
+		+ This processing is done in the function isTimeGreater()
+
+
+	Class Description
+
+		+ timeCounterClass
+			An object of this class stores the time. The members (public) are:
+			*	int t1
+			*	int t2
+			*	timeCounterClass()
+			*	timeCounterClass(int)
+			*	timeCounterClasss(int,int)
+			The usage of t1 and t2 has already been explained above under Calcualtion of Timestamp. The constructors are available to initialize
+			t1 and t2 under different circumstances
+
+		+ waitingQueueMember
+			This is the class whose object stores a request in the wait queue. The members (public) are:
+			*	char packet[MaxMailSize2] - Thus stores the entire packet that was received in the request.
+			*	timeCounterClass time - This stores the time that was received in the request
+			*	bool sendAckValid - This is set if the SERVERREQ received by a server is not from itself so that it can send an acknowledgement
+			*	waitingQueueMember(char *,timeCounterClass,int,bool) - Constructor to initialize the values
+
+
+	Function Description
+
+		+ long getTime()
+			Explanation provided under Calculation of TimeStamp
+
+		+ timeCounterClass getTimeStamp()
+			Explanation provided under Calculation of TimeStamp
+
+		+ int isTimeGreater(timeCounterClass ts1,timeCounterClass ts2)
+			Explanation provided under Calculation of TimeStamp
+
+		+ void * List::Search(timeCounterClass givenTime)
+			Searches the list for a member that corresponds to "givenTime" and removes it from the list. Then makes the previous element before
+			givenTime point to the next element after givenTime
+
+		+ int makeOwnerID(int fromMachine,int fromBox)
+			This function creates a owner ID for machineID equivalent to fromMachine and mailBox equivalent to fromBox
+
+		+ void displayTime(timeCounterClass t)
+			This functions is used to display the time stored in the two time monitoring variable t1 and t2
+			
+		+ void updateTimeStampTable(int who, timeCounterClass timeStamp)
+			This function updates the timestamp table for machine ID that corresponds to who with the value available in timeStamp that is passed to it
+
+		+ int findMinTime()
+			This function finds the minimum all the times stored in the timestamp table of the server that invokes it
+
+		+ void SendHeartBeat(int n)	
+			This function will be forked by the server ones it starts running. This goes on an infinite loop and sends a heartbeat to all the other server
+			10 seconds
+
+		+ void sendIt(char *data, char *buffer, int type)
+			* data is the packet which is to be sent.
+			* buffer is the packet which is the reply from the server.
+			* type is the type of system call (eg SC_CreateLock etc)
+
+			This function initializes various networking parameters like PacketHeader and MailHeader objects.
+			Then it sends the message using postOffice Send. It receives the messages in buffer array using the postOffice
+			Receive. We will discuss the fault-tolerance in the next section.
+
+		+ int getRandServer()
+			This function randomly selects a server to send. We use time also as a better method for randomness.
+			Fault-tolerance of this method is discussed in the next section.
+
+
+
+	Part 3: Fault Tolerant Distributed Senate Pay-Phone System with Multilpe Servers
+	------------------------------------------------------------------------------------
+
+	In this part we take care of handling servers that die during the program execution. We consider three cases below to handle:
+		- The server might die before getting any input from client.
+		- The server might get a request but die before it forwards
+		- The server might get a request, forward it to others and then die before replying.
+	
+	We assume that the following might not happen:
+		- We assume that the servers do not die during the process of forwarding i.e. they have forwarded
+		  the message to some of the other servers but die before completing sending to all servers.
+
+	General snippets of code or parameters that help us in this part:
+		+ Client
+			* aliveServers integer array of length NServers that specifies whether a server is alive or not.
+			* aliveServersLock to protect alive array.
+			* messageCounter that is appended at the end of each message. It starts with 0 and cycles after 999. Useful in identifying
+			  messages that are sent and received. 
+			* messageCounterLock that helps protech this messageCounter.
+			* clientMonitor function that monitors for unreplied messages. Detailed below.
+			* sendIt function that sends a message till it succeeds and noting down dead servers. Also it keeps receiving till it gets the 
+			  correct message.
+
+		+ Server 
+			* alive integer array of length NServers that specifies whether a server is alive or not.
+			* aliveServersLock to protect alive array.
+			* oldMessages is a list of oldMessages. If we get a duplicate request for Acquire and Wait we will not process those because
+			  the reply sent back to the Acquire and Wait might take considerably long time depending upon how other threads release or 
+			  signal. So meanwhile the clientMonitor might think that its Acquire/Wait has not been processed and might try to send back 
+			  the request. In case we do not do this duplicate checking we will inadvertently be appending the acquire call to the waiting
+			  queue of the lock many more times. 
+
+	Let us discuss each of these scenarios:
+		
+		+ A server dies before getting any input from client.
+			if the postOffice Send fails, we know that a server is dead. Accordingly set alive for that server to be 0.
+
+		+ A server dies before forwarding any message. 
+			The clientMonitor thread which identifies that a message has been sent but not received for 20 seconds will 
+			resend the message to the same server. Now, if it finds that a server is dead, it will switch to another server till it 
+			succeeds in sending. 
+
+		+ A server dies after forwarding but before replying back to the client.
+			The other servers which identify a dead server when trying to send a ACK or HBT now decide whether to send a reply to the client
+			or not. So if a server is dead, the next alive server will send reply. For example, when there are 5 servers, 
+			if 3 is dead then 4 will reply if it is alive. Otherwise if 4 is also dead then 0 will reply if 0 is alive.
+
+	Inside the while(1) loop a server listens at mailbox 0. If it receives a ping, it discards that message and then starts listening again.
+	Now if it receives a Client request (CLIENTREQ) then it has to forward to other servers including itself. Note that the server has to 
+	tackle duplicate messages for Acquire and Wait netcalls. This is because, the clientMonitor might notice that an Acquire or Wait has not been
+	replied and hence might try to resend the message, thinking that the message was lost by the server to whom it had sent. So if the 
+	incoming message is not of the type Acquire or Wait, just forward it other servers appending its timestamp(also keeping track of dead servers).
+	Else if the message is of type Acquire or Wait, we check to see if we already have that request in a particular queue. If so, just neglect 
+	that message otherwise forward it normally to other servers appending its timestamp.
+	If the received message is a Heartbeat or an acknowledgement, the server updates the timestamp table.
+	Now, if the received message is a forwarded message from a server, the current server does the following:
+		+ It first finds out whether the message came from itself, if so, the server sets the sendAckValid parameter to true
+		  (which indicates that the server can send a reply to the client). Else, it sets to false.
+		+ It also updates its timestamp table.
+		+ It then appends this message to a queue of messages to be processed. 
+		+ It sends the acknowledgement to the server from whom it received the forwarded message if those two are two 
+		  different machines. Also it updates its timestamp table.
+	
+	We process each message, everytime the incoming message is of type SERVERREQ, SERVERHBT or SERVERACK. We do the following to process
+	a message:
+		+ The server finds the minimum timestamp in the timestamp table.
+		+ It searches in the queue for any member which has a timestamp lesser than the minimum timestamp. 
+		+ For this message, the server checks whether the sendAckAValid flag is true or not. 
+		+ If it is true, it can indeed send the reply to the client. If not, the server checks whether the server which had to reply to the 
+		  message is alive or not by sending a ping. If it is not alive, then the server sees whether it is the first next living
+		  server. If so, then it sends the acknowledgement to the client by setting SendAckValid to true.
+		+ The server then parses the message and finds out which netcall it is etc and processes the request and sends 
+		  acknowledgement if it has to.
+
+	The hearbeat thread periodically sends a heartbeat to other living servers it knows of. If it detects that any server is dead, then
+	it updates the alive field accordingly.
+
+	Function Description
+
+		+ void waitForNSeconds(int n)
+			This function has the capability to wait for n seconds. 
+			Delay(n) seems to be hanging the whole program and so we have implemented the same stuff in this manner:
+			We sense the starting time of the function using getTimeStamp() and store it in a variable t1 and in a loop keep checking
+			whether the current time is lesser than n seconds using isTimeGreater() function. For each check, yield the currentThread.
+
+		+ void clientMonitor(int n)
+			This is a thread that monitors for messages whose replies have not yet come and then schedules these messages to be redelivered.
+			The idea is that if a server dies after getting a client message but dies before forwarding it then the client message is lost.
+			So the client must send the request again. 
+			The thread is forked as soon as the program is started. The thread checks whether the sentMessageQueue is empty or not. If it
+			is empty then wait for 1 second using waitForNSeconds function. At some point if the thread notices that there is an element
+			in the list then we note down what message is that and then wait for 20 seconds before checking whether the element is there 
+			or not again. If so then we assume that the reply has not come from a server and so we try to send the message again.
+			Again, if the sending fails, we automatically choose another server till the sending succeeds. 
+
+		+ void sendIt(char *data, char *buffer, int type)
+			As discussed in the previous section this function sends 'data' and receives 'buffer'. 
+			Further it does the bookkeeping of the messages. 
+			First of all the function selects a random server using getRandServer().
+			It generates an index for the message and appends it at the end of the message using appendNumber() function.
+			Then it sends the message using the postOffice Send function. If the sending of the messages fails, it updates the aliveServers
+			array and then again calls the getRandServer to get a new server. It now forms an object of the type waitingQueueMember which 
+			is convenient for further processing. We store the following details in the waitingQueueMember object's members:
+				packet : the packet that was sent.
+				whichServer : the server to whom the message was sent
+				time.t1 : 1000*type + messageIndex
+				time.t2 : the mailbox to which the server has to reply
+			We can thus use the time member to uniquely identify the messages. 
+			Now we append this object to a sentMessagesQueue. 
+			Then we start call the postOffice receive function. We receive it till we obtain the same messageIndex. This is mainly 
+			to detect errors and also at some point while handling dead servers, some other server might send an old message
+			to the client. 
+			Once I get the correct message, I remove it form the queue using the SearchEqual function. Obviously, this funciton cannot 
+			give a NULL output.
+			
+		+ appendNumber(char *data, int n)
+			This function appends the number at the last three characters of the data. data should be of length MaxMailSize.
+			For example, if n is 235, data[MaxMailSize-3] will have 2, data[MaxMailSize-2] will have 3 and data[MaxMailSize-1] will have 5
+			all as characters (not integers)
+
+		+ int getNumber(data)
+			This function does the opposite of the above function. It generates an integer out of the number that was appended. For example,
+			the above data array will give an integer output of 235 when called using the getNumber function.
+
+		+ int getRandServer()
+			This function finds a random server. It also checks whether the random server is one of the alive servers or not. If not 
+			then it will again generate a random server. Basically it keeps generating a random server till it finds a alive server. 
+		
+		+ void *SearchEqual(timeCounterClass givenTime)   [list.cc]
+			This function will go through the list and finds out whethe each item in the list has a member equal to the givenTime.
+			And if it finds one, then it removes that object from the list (so it will have to link the previous object to the
+			next object). It returns NULL if the search fails. 
+			We assume that each item in the list if of type waitingQueueMember. So this function can only be used on lists that 
+			contains these objects. 
+
+		+ bool isPresent(int i, int j)
+			This function again cycles through the list and compares each item's specific values to be equal to i and j.
+			Again, the list must be a queue of waitingQueueMember objects. For each object, we extract parameters like the messageIndex
+			which is appeneded at the end of the packet and also extracts machine identifier, which is nothing but 100 times the machine
+			ID added with the mailbox. 
+			If these two parameters extracted match with i and j respectively, then we return a TRUE, otherwise FALSE.
+
+		+ int inc(int i)
+			This function just returns one more than i modulo the number of servers. 
+
+		+ int sendPing(int toServer)
+			This function sends a PING to a server to check whether it is alive or dead. 
+			If the send succeeds then we return 1 else return 0.
+
+
+
+   IV IMPLEMENTATION
+   =================
+
+	Part 1: Distributed Senate Pay-Phone System  with Single Server
+	---------------------------------------------------------------
+		
+		+ Files Modified
+		  --------------
+		  	
+			* exception.cc (in userprog)
+			* main.cc (in threads)
+			* Makefile.common
+			* Makefile (in networks)
+			* Makefile (in vm)
+			* Makefile (in userprog)
+			* Makefile (in filesys)
+			* start.s (in test)			
+
+		+ Files Added
+		  -----------
+			
+			* serverprog.cc  (in network)
+			* serverutils.h  (in network)
+			* serverutils.cc (in network)
+
+
+		+ Data Structures Modified
+		  ------------------------
+
+			No Data Structures were modified
+		
+
+		+ Data Structures Added
+		  ---------------------
+
+		  These data structures were added to the serverutils.h
+			
+			*	class NetLocksClass			[network/serverutils.h]
+				{
+				  public:
+					char name[40];
+					bool exists;
+					bool isBusy;
+					int ownerMachine;
+					List *replyQueue;
+					NetLocksClass();
+				};
+
+			*	class NetCondsClass			[network/serverutils.h]
+				{
+				  public:
+					char name[40];
+					bool exists;
+					bool isBusy;
+					int lockID;
+					List *replyQueue;
+					int queueCount;
+					NetCondsClass();
+				};
+
+			*	class replyType				[network/serverutils.h]
+				{
+				  public:
+					int inPktHdr_from;
+					int inMailHdr_from;
+					char ack[MaxMailSize];
+					int machineID;
+					replyType(int, int, char *);
+				};
+
+
+			*	class sharedIntsClass			[network/serverutils.h]
+				{
+				  public:
+					char name[40];
+					int *value;
+					int length;
+					bool exists;
+					sharedIntsClass();
+				}
+
+
+		+ Functions Added
+		  ---------------
+
+		  	The following functions have been added in network/serverutils.cc
+	
+			*	void putData(char *, int)
+
+			*	void formPacket(char *packet, int mType, int syscallType, int machineID, int mailBoxID, int parameter1, int parameter2, 
+				int parameter3, timeCounterClass *time,  char *msg)
+
+			*	void formPacket(char *packet, int syscallType, int parameter1, int parameter2, char *msg)
+
+			*	void getData(char *data, int *i)
+
+			*	void parsePacket(char *packet, int *mType, int *syscallType, int *machineID, int *mailBoxID, int *parameter1, int *parameter2, 
+				int *parameter3, timeCounterClass *time, char *msg)
+
+			*	void parsePacket(char *packet, int *syscallType, int *parameter1, int *parameter2, int *parameter3, char *msg)
+			
+			*	int makeOwnerID(int fromMachine,int fromBox)
+		
+			*	NetLocksClass::NetLocksClass()
+
+			*	NetCondsClass::NetCondsClass()
+
+			*	replyType::replyType(int i, int j, char *a)
+
+			*	sharedIntsClass::sharedIntsClass()
+			
+			*	char *formreply(char *msg, int i1, int i2)
+			
+
+			The following has been added in userprog/exception.cc 
+
+			*	void Delay_Syscall(int i); 
+
+			*	int createSharedInt_Syscall(unsigned int vaddr, int len, int arraysize)
+			
+			*	int getSharedInt_Syscall(int integerID, int position)
+
+			*	void serSharedInt_Syscall(int integerID, int position, int value)
+
+			
+			The following functions are added in network/serverprog.cc
+
+			*	void SendAck(int inPktHdr_from, int inMailHdr_from, char *ack_local)
+
+			*	void CreateLock_Netcall(char *name, int fromMachine, int fromBox)
+
+			*	void AcquireLock_Netcall(int lockID, int fromMachine, int fromBox)
+
+			*	void ReleaseLock_Netcall(int lockID, int fromMachine, int fromBox)
+
+			*	void DeleteLock_Netcall(int lockID, int fromMachine, int fromBox)
+
+			*	void CreateCondition_Netcall(char *name, int fromMachine, int fromBox)
+
+			*	void WaitCV_Netcall(int condID, int lockID, int fromMachine, int fromBox)
+
+			*	void SignalCV_Netcall(int condID, int lockID, int fromMachine, int fromBox)
+
+			*	void BroadcastCV_Netcall(int condID, int lockID, int fromMachine, int fromBox)
+
+			*	void DeleteCondition_Netcall(int condID,int fromMachine,int fromBox)
+
+			*	void StartServer()
+
+			*	void CreateSharedInt_Netcall(char *name, int length, int fromMachine, int fromBox)			
+
+			* 	void GetSharedInt_Netcall(int integerID, int position, int fromMachine, int fromBox)
+		
+			* 	void SetSharedInt_Netcall(int integerID, int position, int fromMachine, int fromBox)				
+
+
+		+ Functions Modified
+		  ------------------
+
+			The following functions have been modified in exception.cc to handled networking.
+			
+			*	int CreateLock_Syscall(unsigned int vaddr, int len)
+
+			*	void AcquireLock_Syscall(int lockID)
+
+			*	void ReleaseLock_Syscall(int lockID)
+
+			*	void DeleteLock_Syscall(int lockID)
+
+			*	int CreateCondition_Syscall(unsigned int vaddr, int len)
+
+			*	void WaitCV_Syscall(int condID,int lockID)
+
+			*	void SignalCV_Syscall(int condID,int lockID)
+
+			*	void BroadcastCV_Syscall(int condID,int lockID)
+
+			*	void DeleteCondition_Syscall(int condID)	
+
+			
+			
+	Part 2: Distributed Senate Pay-Phone System with Multilpe Servers
+	-----------------------------------------------------------------	
+
+	 	+ Files Modified
+		  --------------
+
+			* list.h (in threads)
+			* list.cc (in threads)		
+			* serverprog.cc  (in network)
+			* serverutils.h  (in network)
+			* serverutils.cc (in network)
+
+
+		+ Files Added
+		-------------
+
+			No files were added
+
+
+		+ Data Structures Modified
+		  ------------------------
+
+			No Data Structures were modified
+
+		
+		+ Data Structures Added
+		  ---------------------
+
+			The following data structures were added in list.h
+
+			*	class timeCounterClass		[threads/list.h]
+				{
+				 public:
+					int t1;
+					int t2;
+					timeCounterClass();
+					timeCounterClass(int);
+					timeCounterClass(int,int);
+				}
+
+			*	class waitingQueueMember	[threads/list.h]
+				{
+				 public:
+					char packet[MaxMailSize2];
+					timeCounterClass time;
+					int whichServer;
+					bool sendAckValid;
+					waitingQueueMember(char *, timeCounterClasss, int, bool)
+				}
+
+
+		+ Functions Modified
+		  ------------------
+
+			No functions were modified
+
+
+		+ Functions Added
+		  ---------------
+			
+			The following functions were added in list.cc
+
+			*	timeCounterClass::timeCounterClass()
+
+			*	timeCounterClass::timeCounterClass(int t)
+
+			*	timeCounterClass::timeCounterClass(int t11, int t21)
+
+			*	int isTimeGreater(timeCounterClass tS1, timeCounterClass tS2)
+
+			*	waitingQueueMember::waitingQueueMember(char *pkt, timeCounterClass t, int f, bool sendack)
+			
+			*	void * List::Search(timeCounterClass givenTime)
+
+			
+			The following functions were added in serverutils.cc
+
+			*	long getTime()
+
+			*	timeCounterClass getTimeStamp()
+
+			
+			The following functions were addded in serverprog.cc
+
+			*	void displayTime(timeCounterClass t)
+			
+			*	void updateTimeStampTable(int who, timeCounterClass timeStamp)
+
+			*	int findMinTime()
+
+			*	void SendHeartBeat(int n)
+
+	Part 3: Fault Tolerant Distributed Senate Pay-Phone System with Multilpe Servers
+	---------------------------------------------------------------------------------
+	
+	 	+ Files Modified
+		  --------------
+
+			* list.h (in threads)
+			* list.cc (in threads)		
+			* serverprog.cc  (in network)
+			* serverutils.h  (in network)
+			* serverutils.cc (in network)
+
+
+		+ Files Added
+		-------------
+
+			No files were added
+
+
+		+ Data Structures Modified
+		  ------------------------
+
+			No Data Structures were modified
+
+		
+		+ Data Structures Added
+		  ---------------------
+			
+			No Data structures were modified.
+
+
+		+ Functions Modified
+		  ------------------
+
+			* StartServer	[serverprog.cc]
+			* SendHeartBeat [serverprog.cc]
+			* findMinTime	[serverprog.cc]
+			* SendAck	[serverprog.cc]
+			* SendIt	[exception.cc]
+
+
+		+ Functions Added
+		  ---------------
+
+			* inc		[serverprog.cc]
+			* isPresent	[list.cc]
+			* SearchEqual	[list.cc]
+
+
+   V. TESTING
+   ==========
+
+	Part 1: Distributed Senate Pay-Phone System  with Single Server
+	---------------------------------------------------------------
+	
+	+ How to Test
+
+		On 6 different windows type the following commands:
+	
+			+ nachos -m 0 -N 1 -server
+			+ nachos -m 1 -N 1 -x ../test/Operator
+			+ nachos -m 2 -N 1 -x ../test/President
+			+ nachos -m 3 -N 1 -x ../test/Senator
+			+ nachos -m 4 -N 1 -x ../test/Visitor
+			+ nachos -m 5 -N 1 -x ../test/Visitor2
+
+		-server starts the server program. The Operator program forks 5 operators. The President program forks 1 President and 4 Visitors.
+		The Sentaor program forks 5 Senators. The Visitor and Visitor2 programs fork 5 visitors each. It is absolutely important that the 
+		server is started first. The other client programs can be started in any order.
+
+		In fact if you leave the -N flag, the program will automatically assume that the number of servers is 1.
+
+
+	+ Test Output
+
+		The server starts and runs in an infinite loop. It handles the clients request. The President, Senators, Visitors and the Operators
+		comprise the senate pay phone system. These programs each having multiple threads run concurrently and the senate payphone system
+		is implemented using a single server. The output can be seen as each person talks on the phone or is denied access to the phone.
+
+
+	Part 2: Distributed Senate Pay-Phone System with Multiple Servers
+	-----------------------------------------------------------------
+
+	+ How to Test
+
+		On 10 different windows type the following commands:
+
+			+ nachos -m 0 -N 5 -server
+			+ nachos -m 1 -N 5 -server
+			+ nachos -m 2 -N 5 -server
+			+ nachos -m 3 -N 5 -server
+			+ nachos -m 4 -N 5 -server
+			+ nachos -m 5 -N 5 -x ../test/Operator
+			+ nachos -m 6 -N 5 -x ../test/President
+			+ nachos -m 7 -N 5 -x ../test/Senator
+			+ nachos -m 8 -N 5 -x ../test/Visitor
+			+ nachos -m 9 -N 5 -x ../test/Visitor2
+		
+		It is important to start all the servers first. Then the order in which the client programs are started do not matter.
+		Wait till the prompt comes 'Going to receive' before starting the clients.
+
+	+ Test Output
+
+		All the servers run in an infinite loop. The distrubuted senate pay phone system with multiple servers is implemented. The clients 
+		run multiple threads and choose one particular server to process the request. The server processes the request and replies back to
+		the client and also forwards the request to other servers and they also process the request but they dont reply back to the client.
+		All the server work in synchronized manner and handle the client requests concurrently. They also send a heart beat message to each
+		other every 10 seconds to indicate that they are alive. The output can be seen on each of the windows as and when each person talks
+		on the phone or is denied access to the phone.
+
+		Sample output:
+
+		Visitor 11      1                1/2 units       2       NOTAPPLICABLE    ACCEPTED     Money paid is $1 - verified by operator 2 
+		Visitor 11      1                2/2 units       2       NOTAPPLICABLE    ACCEPTED     Money paid is $1 - verified by operator 2 
+		
+		Visitor 12      UNAVAILABLE      0/0 units       4       NOTAPPLICABLE    DENIED       Money paid is $0 - verified by operator 4 
+		
+		Also we have the client stub messages like :
+		[from mail box] Going to send :what message, message index to whom 
+		[from mail box] Going to Receive = what message, message index from whom
+		etc.
+
+		At the end of the simulation, all client programs except Operator will terminate. The Operator will issue a Wait system call and 
+		keep waiting. [Because of part 3, there will be periodic wait messages that will be sent by the Operator].
+
+
+
+	Note to the grader: 
+	
+		* Please start all the five servers extremely quickly. But once the 
+		  servers are started please wait till each of them print "Going to Receive" on the screen and then start the client programs one by one.
+		  This is required for the servers to be aware of each other and work in a synchronized manner.
+	
+		*  The Operator will keep running end, so it won't terminate.
+
+		*  President.c contains 5 threads: 1 President and 4 Visitors
+		   So each client has 5 threads.
+
+
+
+	Part 3: Fault Tolerant Distributed Senate Pay-Phone System with Multilpe Servers
+	---------------------------------------------------------------------------------
+
+	+ How to Test
+
+		On 10 different xterm windows, run the following commands as above:
+
+			+ nachos -m 0 -N 5 -server
+			+ nachos -m 1 -N 5 -server
+			+ nachos -m 2 -N 5 -server
+			+ nachos -m 3 -N 5 -server
+			+ nachos -m 4 -N 5 -server
+			+ nachos -m 5 -N 5 -part3 -x ../test/Operator
+			+ nachos -m 6 -N 5 -part3 -x ../test/President
+			+ nachos -m 7 -N 5 -part3 -x ../test/Senator
+			+ nachos -m 8 -N 5 -part3 -x ../test/Visitor
+			+ nachos -m 9 -N 5 -part3 -x ../test/Visitor2
+   
+   		Again it is important to start all the servers first. Wait till the prompt comes 'Going to receive' before starting the clients.
+
+		Now randomly kill the xterm windows (at least one must run)
+
+	+ Test Output
+
+		The output is obtained as discuessed in the previous section.
+
+	We also have a smaller test as detailed below:
+
+	+ How to Test
+		
+
+		On 6 differnt xterm windows, run :
+
+			+ nachos -m 0 -N 5 -server
+			+ nachos -m 1 -N 5 -server
+			+ nachos -m 2 -N 5 -server
+			+ nachos -m 3 -N 5 -server
+			+ nachos -m 4 -N 5 -server
+			+ nachos -m 5 -N 5 -part3 -x ../test/testsuite1
+
+	+ Test Output
+		
+		Here 5 threads are forked and we get the following outputs
+		Thread#0 forked
+		.
+		.
+		Thread #4 forked
+		Woken 0
+		.
+		.
+		Woken 4
+		There will be some error display messages from the server when trying to acquire/wait on invalid locks/conditions.
+
+	
+
+   VI. DISCUSSION
+   ==============
+
+	+ Experiment Expectation
+	-------------------------
+
+		Part 1 Distributed Senate Pay-phone system with Single Server
+		-------------------------------------------------------------
+
+		Userprograms across different Nachos instances must work in a synchronized way and be able to share data and resources. 
+		The userprograms must interact only with a single centarlized server.This server must take care of mutual exclusion issues- 
+		access to shared resources. This server should maintain the state of the shared resources in the server's kernel. Any user program 
+		on any Nachos client machine should interact with each other only via this server. The communication between userprograms (threads)
+		cannot take place using shared memory or directly. This should be achieved issuing 'RPCs'to the server. Nachos client must host 
+		atleast 5 userprograms (threads).
+
+
+		Part 2 Distributed Senate Pay-Phone system with Multiple servers
+		-----------------------------------------------------------------		
+
+		In Part 2 of project 4 we are expected to build a  complete distributed system using a group of coherent servers.
+		The servers must together maintain the state of the Senate Pay phone system. The client should randomly select any server 
+		and send a request message to it asking for access to critical region. This server must inform other servers about this 
+		request from the client. They should collectively decide on whether the request can be conceeded or must be put on hold for 
+		later processing. The reply message back to the Client program must be sent by the server receiving the request.The servers must 
+		continuously inform each other of their presence. There must be at most 5 servers working together in the group.The server group 
+		must support multiple Nachos instances each handling atleast 5 threads.
+
+		
+		Part 3 Fault Tolerant Distributed Senate Pay-Phone system with Multiple servers
+		-------------------------------------------------------------------------------
+
+		We expect that the simulation keeps running even when we randomly select servers and kill. The clients as well as the servers
+		must keep track of the living and dead servers. If a message is lost, the client must resend the message to any other server.
+		If a server which has forwarded the messages dies, then other servers must find this out and decide which amongst them will reply
+		to the client.
+
+ 	
+	+ Experiment Result
+	-------------------
+
+		Part 1 Distributed Senate Pay-Phone System with Single Server
+		-------------------------------------------------------------
+
+		The distributed system comprising of a single server supports 5 NACHOS Client instances. Each of these client instances 
+		hosts about 5 user programs. These user programs though in different machines are able to share data and resources. 
+		The userprograms communicate only with the single centarlized server. The server manages the interaction between the clients.
+		The client programs make a request issuing 'RPCs'to the server.The server processes these requests and replies back to the clients.
+		
+
+
+		Part 2 Distributed Senate PayPhone System with Multiple Servers
+		---------------------------------------------------------------
+		
+		In this distributed system, 5 server instances together as a group support 5 nachos client instances each hosting about 5 user programs
+		and maintain the state of the Senate Pay phone system. The client programs randomly select any server and send a request message to it 
+		asking for access to critical region. This server informs other servers about this request from the client. All the servers collectively 
+		decide on whether the request can be conceeded or must be put on hold for later allocation. The request is granted based on the timestamp 
+		and machineId as priority. The reply message back to the Client program is sent by the server receiving the request.The servers 
+		continuously inform each other of their presence.
+
+
+		Part 3 Fault Tolerant Distributed Senate Pay-Phone system with Multiple servers
+		------------------------------------------------------------------------------- 
+
+		Even if we terminate servers randomly, we note that the client and other servers make a note of it and can still process 
+		the requests. Occasionally the program might get stuck if no servers replied back in which case the client program waits 
+		for 10 seconds before sending back the same request to a server again. This could take a while depending on the location of messages
+		in the queue. 
+
+
+	+ Experiment Explanation
+	------------------------
+
+		We have thus implemented a distributed system as per the required criteria- single server and multiple servers. Mutual
+		exclusion and sharing of resources & data between user programs on different machines is possible. The user programs 
+		do not directly interact, they do so only via the server. The server/ group of servers maintain the entire state
+		of the senate pay-phone system. The RPCs also work correctly to implement the system. Further, even if we terminate 
+		servers randomly, the servers and clients recover from this and then run to completion.
+		Thus,the experiment result matches the expectations.
+
+
+
+    VII. MISCELLANEOUS
+    ==================
+
+	+ The NumPhysPages parameter in machine.h must be set to 512.
+	+ Since the servers run in a while(1) loop, it is required to hit ctrl+c to stop executuion of the server
+	+ As mentioned before, we request the grader to wait till all the servers print "Going to Receive" before starting the client programs to achieve 
+	  proper synchronization and concurrent execution.
+	+ The distributed system takes a very long time to run to completion sometimes exceeding 20 to 30 mins. So we request the grader to wait for sometime 
+	  before concluding that the client program has gone on an infinite loop without gracefully exiting.
